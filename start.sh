@@ -15,8 +15,6 @@ BEACON_VALIDATORS=(
     '{"crypto": {"kdf": {"function": "scrypt", "params": {"dklen": 32, "n": 262144, "r": 8, "p": 1, "salt": "edc8420236d311fda52cab840b1448967ab9f414f35f39e59e0a35fb233d1163"}, "message": ""}, "checksum": {"function": "sha256", "params": {}, "message": "712fb61f9a2fccf2436b8a6a5db3b02f631b472838a86f439bb18fb604a6b454"}, "cipher": {"function": "aes-128-ctr", "params": {"iv": "242e686e805a55e24e0c57c2ec068b67"}, "message": "9df4028ebb1d58b1dd1f1e2e37a0aa1f936c5ae7e5e04686fe5660b5dc232a48"}}, "description": "", "pubkey": "aaf7fec6445f9d8c2d95baa46f89d91489ef4fedb49dbf68468adae0993b767a23b38a4cc2295913face91bc823d8fb0", "path": "m/12381/3600/4/0/0", "uuid": "cd9eea1d-9eb4-45f8-a1a8-97869c711899", "version": 4}'
 )
 
-NUM_NODES=6
-
 VALDAITOR_KEY_PASSWORD="password"
 WALLET_PASSWORD="DguT9Mae0JkzP4ycirCH@@@@" 
 
