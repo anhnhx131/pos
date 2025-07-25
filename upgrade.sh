@@ -52,6 +52,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --chain-config-file=/config/config.yaml \
     --chain-id=84 \
     --network-id=84 \
+    --force-clear-db \
     --contract-deployment-block=0 \
     --deposit-contract=0x4242424242424242424242424242424242424242 \
     --execution-endpoint=http://$EL_NODE_IP:8551 \
@@ -88,6 +89,6 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --wallet-password-file=/data/wallet/password.txt
   fi
 
-  sleep 10
+  sleep 15
 
 done
