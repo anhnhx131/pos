@@ -1,0 +1,20 @@
+{
+  "name": "deposit",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "deposit": "ts-node index.ts"
+  },
+  "keywords": [],
+  "author": "0xcuonghx",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "viem": "^2.31.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
