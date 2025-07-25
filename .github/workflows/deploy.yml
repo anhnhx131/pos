@@ -22,5 +22,5 @@ jobs:
 
       - name: Delete old and upload new code
         run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "rm -rf ~/app && mkdir ~/app"
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "sudo rm -rf ~/app && mkdir ~/app"
           scp -r ./* ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/app/
