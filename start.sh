@@ -116,9 +116,8 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --network-id=84 \
     --contract-deployment-block=0 \
     --deposit-contract=0x4242424242424242424242424242424242424242 \
-    --http-web3provider=http://$EL_NODE_IP:8551 \
+    --http-web3provider=http://$EL_NODE_IP:8545 \
     --accept-terms-of-use \
-    --jwt-secret=/config/jwtsecret \
     --enable-debug-rpc-endpoints \
     --verbosity=debug \
     --rpc-host=0.0.0.0 \
