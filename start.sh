@@ -107,7 +107,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     -v $(pwd)/cl/config:/config \
     -v $(pwd)/cl/bn:/bn \
     -v $(pwd)/cl/node-$i:/data/beacondata \
-    gcr.io/prysmaticlabs/prysm/beacon-chain:v3.1.2 \
+    gcr.io/prysmaticlabs/prysm/beacon-chain:v2.0.1 \
     --datadir=/data/beacondata \
     --min-sync-peers=1 \
     --bootstrap-node=enr:-MK4QByMttvazzFwFJbNcq0z2X3MR3Iv6v8eEUbxUuHSW5DLdhTKIWjXMikBPpDS5Cf9hKAj5M_gmt-Uxpj-XncmRDqGAZg8_SFhh2F0dG5ldHOIAAAAAAAAAACEZXRoMpBOXjq3AQAAhAEAAAAAAAAAgmlkgnY0gmlwhAoHAgKJc2VjcDI1NmsxoQJZJFLCdVOkj35zGdm8bpM_AN2a8g_a4GWoXwTHOBP_XYhzeW5jbmV0cwCDdGNwgjLIg3VkcIIu4A \
@@ -143,7 +143,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     # import keystore
     docker run --rm \
       -v $(pwd)/cl/validator-$i:/data \
-      gcr.io/prysmaticlabs/prysm/validator:v3.1.2 \
+      gcr.io/prysmaticlabs/prysm/validator:v2.0.1 \
       accounts import \
       --wallet-dir=/data/wallet \
       --wallet-password-file=/data/wallet/password.txt \
@@ -158,7 +158,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --ip $VALIDATOR_NODE_IP \
       -v $(pwd)/cl/validator-$i:/data \
       -v $(pwd)/cl/config:/config \
-      gcr.io/prysmaticlabs/prysm/validator:v3.1.2 \
+      gcr.io/prysmaticlabs/prysm/validator:v2.0.1 \
       --beacon-rpc-provider=$BEACON_NODE_IP:4000 \
       --datadir=/data/validatordata \
       --accept-terms-of-use \
