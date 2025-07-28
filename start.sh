@@ -163,9 +163,9 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --datadir=/data/validatordata \
       --accept-terms-of-use \
       --chain-config-file=/config/config.yaml \
-      --force-clear-db \
       --wallet-dir=/data/wallet \
-      --wallet-password-file=/data/wallet/password.txt
+      --wallet-password-file=/data/wallet/password.txt \
+      --graffiti="VALIDATOR-$i"
   fi
 
 done
