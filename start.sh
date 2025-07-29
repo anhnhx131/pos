@@ -164,7 +164,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --chain-config-file=/config/config.yaml \
       --wallet-dir=/data/wallet \
       --wallet-password-file=/data/wallet/password.txt \
-      --graffiti="VALIDATOR-$i"
+      --graffiti="VALIDATOR-$i" \
       --suggested-fee-recipient=0x23081455D3FEaf17426176dfc5Ee7A3ce519aD33
   fi
 
@@ -195,26 +195,23 @@ sh dora/start.sh
 
 # echo $JWT_SECRET > $(pwd)/el/geth/.ethereum-relay/jwtsecret
 
-# docker run -d \
-#   --name el-geth-relay-node \
-#   --network $DOCKER_NETWORK_NAME \
-#   -v $(pwd)/el/geth/.ethereum-relay:/.ethereum \
-#   -p 8551:8551 \
-#   -p 8545:8545 \
-#   ethereum/client-go:v1.11.6 \
-#   --nat=extip:$EL_NODE_IP \
-#   --http \
-#   --http.api=eth,net,web3,debug,trace \
-#   --http.addr=0.0.0.0 \
-#   --http.corsdomain=* \
-#   --http.vhosts=* \
-#   --datadir=/.ethereum \
-#   --syncmode=full \
-#   --authrpc.vhosts=* \
-#   --authrpc.addr=0.0.0.0 \
-#   --authrpc.jwtsecret=/.ethereum/jwtsecret \
-#   --bootnodes=$BOOT_NODE \
-#   --networkid=1337 \
+docker run -d \
+  --name el-geth-relay-node \
+  --network $DOCKER_NETWORK_NAME \
+  -v $(pwd)/el/geth/.ethereum-relay:/.ethereum \
+  -p 8551:8551 \
+  -p 8545:8545 \
+  ethereum/client-go:v1.11.6 \
+  --nat=extip:$EL_NODE_IP \
+  --http \
+  --http.api=eth,net,web3,debug,trace \
+  --http.addr=0.0.0.0 \
+  --http.corsdomain=* \
+  --http.vhosts=* \
+  --datadir=/.ethereum \
+  --syncmode=full \
+  --bootnodes=$BOOT_NODE \
+  --networkid=1337 \
 
 # deposit
 sleep 3
