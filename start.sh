@@ -165,6 +165,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --wallet-dir=/data/wallet \
       --wallet-password-file=/data/wallet/password.txt \
       --graffiti="VALIDATOR-$i"
+      --suggested-fee-recipient=0x23081455D3FEaf17426176dfc5Ee7A3ce519aD33
   fi
 
 done
