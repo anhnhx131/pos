@@ -98,7 +98,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     $([ "$i" -eq 0 ] && echo "--nodekey /.ethereum/boot.key" || echo "")
 
   if [ "$i" -eq 0 ]; then
-    sleep 300
+    sleep 180
   fi
 
   # Run beacon node
