@@ -35,7 +35,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     -v $(pwd)/cl/config:/config \
     -v $(pwd)/cl/bn:/bn \
     -v $(pwd)/cl/node-$i:/data/beacondata \
-    gcr.io/prysmaticlabs/prysm/beacon-chain:v4.2.1 \
+    gcr.io/prysmaticlabs/prysm/beacon-chain:v3.2.0 \
     --datadir=/data/beacondata \
     --min-sync-peers=1 \
     --bootstrap-node=enr:-MK4QByMttvazzFwFJbNcq0z2X3MR3Iv6v8eEUbxUuHSW5DLdhTKIWjXMikBPpDS5Cf9hKAj5M_gmt-Uxpj-XncmRDqGAZg8_SFhh2F0dG5ldHOIAAAAAAAAAACEZXRoMpBOXjq3AQAAhAEAAAAAAAAAgmlkgnY0gmlwhAoHAgKJc2VjcDI1NmsxoQJZJFLCdVOkj35zGdm8bpM_AN2a8g_a4GWoXwTHOBP_XYhzeW5jbmV0cwCDdGNwgjLIg3VkcIIu4A,enr:-MK4QGXtR6S1Odtr0XfkY8uC-KMVQFeCfmy1nYU9wM6pUxi5P5N2aZmk-jj-6CELnbZVfJAZOtxkwfUadUOwTK7-86GGAZhAgYHfh2F0dG5ldHOIAAAAAAAAAACEZXRoMpBOXjq3AQAAhAEAAAAAAAAAgmlkgnY0gmlwhAoHAgOJc2VjcDI1NmsxoQMVfz11FN-GckAkmtWMvBcTA30NYlkGIzjL9PRFs-HXvohzeW5jbmV0cwCDdGNwgjLIg3VkcIIu4A,enr:-MK4QNVIt3io_v1nX_TAjyI0i3w2O7RcTuHDcZZemrsboR5bOjQHtEy7vb_f2F_E6uZcaF9anm6AI0IY0u7ffHcPo-uGAZhAgYPmh2F0dG5ldHOIAAAAAAAAAACEZXRoMpBOXjq3AQAAhAEAAAAAAAAAgmlkgnY0gmlwhAoHAgaJc2VjcDI1NmsxoQLHL6w4dBmXkEd4zcoZrqyQ019Vkp_U6MU8we0Wf556zohzeW5jbmV0cwCDdGNwgjLIg3VkcIIu4A \
@@ -55,9 +55,9 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --p2p-host-ip=$BEACON_NODE_IP \
     --p2p-local-ip=0.0.0.0 \
     --enable-upnp \
-    $([ "$i" -eq 0 ] && echo "--p2p-priv-key=/bn/privkey" || echo "")
+    $([ "$i" -eq 0 ] || [ "$i" -eq 1 ] && echo "--p2p-priv-key=/bn/privkey$i" || echo "")
 
-    if [ "$i" -ne 0 ]; then
+    if [ "$i" -gt 1 ]; then
       VALIDATOR_INDEX=$((i-1))
       # sleep
       sleep 300
@@ -68,7 +68,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
         --ip $VALIDATOR_NODE_IP \
         -v $(pwd)/cl/validator-$i:/data \
         -v $(pwd)/cl/config:/config \
-        gcr.io/prysmaticlabs/prysm/validator:v4.2.1 \
+        gcr.io/prysmaticlabs/prysm/validator:v3.2.0 \
         --beacon-rpc-provider=$BEACON_NODE_IP:4000 \
         --datadir=/data/validatordata \
         --accept-terms-of-use \
@@ -77,6 +77,6 @@ for (( i=0; i<$NUM_NODES; i++ )); do
         --wallet-password-file=/data/wallet/password.txt
     fi
 
-  sleep 15
+  sleep 30
 
 done

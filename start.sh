@@ -126,7 +126,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --p2p-host-ip=$BEACON_NODE_IP \
     --p2p-local-ip=0.0.0.0 \
     --enable-upnp \
-    $([ "$i" -eq 0 ] && echo "--p2p-priv-key=/bn/privkey" || echo "")
+    $([ "$i" -eq 0 ] || [ "$i" -eq 1 ] && echo "--p2p-priv-key=/bn/privkey$i" || echo "")
 
   # Run validator node
   if [ "$i" -gt 1 ]; then
