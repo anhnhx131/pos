@@ -58,7 +58,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
 
   docker run --rm \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-    ethereum/client-go:v1.10.26 \
+    ethereum/client-go:v1.11.6 \
     account import --datadir /.ethereum --password /.ethereum/password.txt /.ethereum/private.key
   fi
 
@@ -66,7 +66,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
   docker run --rm \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
     -v $(pwd)/el/geth/genesis.json:/.genesis.json \
-    ethereum/client-go:v1.10.26 \
+    ethereum/client-go:v1.11.6 \
     --datadir /.ethereum init /.genesis.json
 
   # Run geth node
@@ -76,7 +76,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --ip $EL_NODE_IP \
     $( [ "$i" -eq 0 ] && echo "-p 8545:8545" ) \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-    ethereum/client-go:v1.10.26 \
+    ethereum/client-go:v1.11.6 \
     --nat=extip:$EL_NODE_IP \
     --http \
     --bootnodes=$BOOT_NODE \
@@ -109,7 +109,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     gcr.io/prysmaticlabs/prysm/beacon-chain:v3.1.2 \
     --datadir=/data/beacondata \
     --min-sync-peers=1 \
-    --bootstrap-node=enr:-MK4QByMttvazzFwFJbNcq0z2X3MR3Iv6v8eEUbxUuHSW5DLdhTKIWjXMikBPpDS5Cf9hKAj5M_gmt-Uxpj-XncmRDqGAZg8_SFhh2F0dG5ldHOIAAAAAAAAAACEZXRoMpBOXjq3AQAAhAEAAAAAAAAAgmlkgnY0gmlwhAoHAgKJc2VjcDI1NmsxoQJZJFLCdVOkj35zGdm8bpM_AN2a8g_a4GWoXwTHOBP_XYhzeW5jbmV0cwCDdGNwgjLIg3VkcIIu4A \
+    --bootstrap-node=enr:-MK4QNEUb1iPB3uijEwaIcGV5DgEeMDGSkUiSbuf92cWUO3vZLSVoamK0byi7FjhvBIUYYIWTjhPIsbsAA_37H1k-VaGAZhanexNh2F0dG5ldHOIAAAAAAAAAACEZXRoMpC2eNdHAQAAhAEAAAAAAAAAgmlkgnY0gmlwhAoHAgKJc2VjcDI1NmsxoQJZJFLCdVOkj35zGdm8bpM_AN2a8g_a4GWoXwTHOBP_XYhzeW5jbmV0cwCDdGNwgjLIg3VkcIIu4A,enr:-MK4QE1ufdj0_mtQqFV54k4UsrRZ9HNGRImX05aQqTQp2mGiUZOlolyxcDhWB1cfjT_imXgfB15_4OWZuCQrMUfxKfqGAZhane3Kh2F0dG5ldHOIAAAAAAAAAACEZXRoMpC2eNdHAQAAhAEAAAAAAAAAgmlkgnY0gmlwhAoHAgOJc2VjcDI1NmsxoQLloM8VukrmSVDetKjK1tdPhqWcNs3A-uX7Lyu-yNSyD4hzeW5jbmV0cwCDdGNwgjLIg3VkcIIu4A \
     --chain-config-file=/config/config.yaml \
     --chain-id=84 \
     --network-id=84 \
