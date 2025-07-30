@@ -31,7 +31,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --name $BEACON_NODE_NAME \
     --network $DOCKER_NETWORK_NAME \
     --ip $BEACON_NODE_IP \
-    $( [ "$i" -eq 0 ] && echo "-p 3500:3500" ) \
+    -p 350$i:3500 \
     -v $(pwd)/cl/config:/config \
     -v $(pwd)/cl/bn:/bn \
     -v $(pwd)/cl/node-$i:/data/beacondata \
@@ -74,6 +74,6 @@ for (( i=0; i<$NUM_NODES; i++ )); do
         --wallet-password-file=/data/wallet/password.txt
     fi
 
-  sleep 15
+  sleep 30
 
 done
