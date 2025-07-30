@@ -44,6 +44,14 @@ beaconapi:
   endpoints:
     - name: "local"
       url: "http://172.17.0.1:3500"
+    - name: "local2"
+      url: "http://172.17.0.1:3501"
+    - name: "local3"
+      url: "http://172.17.0.1:3502"
+    - name: "local4"
+      url: "http://172.17.0.1:3503"
+    - name: "local5"
+      url: "http://172.17.0.1:3504"
 
   # local cache for page models
   localCacheSize: 100 # 100MB
