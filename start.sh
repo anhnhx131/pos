@@ -97,10 +97,6 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --password=/.ethereum/password.txt \
     $([ "$i" -eq 0 ] && echo "--nodekey /.ethereum/boot.key" || echo "")
 
-  if [ "$i" -eq 0 ]; then
-    sleep 60
-  fi
-
   # Run beacon node
   docker run -d \
     --name $BEACON_NODE_NAME \
