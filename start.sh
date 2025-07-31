@@ -80,7 +80,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --nat=extip:$EL_NODE_IP \
     --http \
     --bootnodes=$BOOT_NODE \
-    --http.api=eth,net,web3,debug,trace \
+    --http.api=eth,net,web3,debug,trace,engine \
     --http.addr=0.0.0.0 \
     --http.corsdomain=* \
     --http.vhosts=* \
