@@ -18,8 +18,8 @@
     "londonBlock": 0,
     "muirGlacierBlock": 0,
     "berlinBlock": 0,
-    "terminalTotalDifficulty": 200,
-    "shanghaiTime": 1753917869
+    "terminalTotalDifficulty": 100,
+    "shanghaiTime": 1753921879
   },
   "nonce": "0x0",
   "timestamp": "0x0",

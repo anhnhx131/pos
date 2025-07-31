@@ -58,7 +58,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
 
   docker run --rm \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-    ethereum/client-go:v1.10.26 \
+    ethereum/client-go:v1.11.6 \
     account import --datadir /.ethereum --password /.ethereum/password.txt /.ethereum/private.key
   fi
 
@@ -66,7 +66,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
   docker run --rm \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
     -v $(pwd)/el/geth/genesis.json:/.genesis.json \
-    ethereum/client-go:v1.10.26 \
+    ethereum/client-go:v1.11.6 \
     --datadir /.ethereum init /.genesis.json
 
   # Run geth node
@@ -76,7 +76,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --ip $EL_NODE_IP \
     $( [ "$i" -eq 0 ] && echo "-p 8545:8545" ) \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-    ethereum/client-go:v1.10.26 \
+    ethereum/client-go:v1.11.6 \
     --nat=extip:$EL_NODE_IP \
     --http \
     --bootnodes=$BOOT_NODE \
@@ -106,7 +106,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     -v $(pwd)/cl/config:/config \
     -v $(pwd)/cl/bn:/bn \
     -v $(pwd)/cl/node-$i:/data/beacondata \
-    gcr.io/prysmaticlabs/prysm/beacon-chain:v3.1.2 \
+    gcr.io/prysmaticlabs/prysm/beacon-chain:v3.2.0 \
     --datadir=/data/beacondata \
     --min-sync-peers=1 \
     --bootstrap-node=enr:-MK4QNEUb1iPB3uijEwaIcGV5DgEeMDGSkUiSbuf92cWUO3vZLSVoamK0byi7FjhvBIUYYIWTjhPIsbsAA_37H1k-VaGAZhanexNh2F0dG5ldHOIAAAAAAAAAACEZXRoMpC2eNdHAQAAhAEAAAAAAAAAgmlkgnY0gmlwhAoHAgKJc2VjcDI1NmsxoQJZJFLCdVOkj35zGdm8bpM_AN2a8g_a4GWoXwTHOBP_XYhzeW5jbmV0cwCDdGNwgjLIg3VkcIIu4A,enr:-MK4QE1ufdj0_mtQqFV54k4UsrRZ9HNGRImX05aQqTQp2mGiUZOlolyxcDhWB1cfjT_imXgfB15_4OWZuCQrMUfxKfqGAZhane3Kh2F0dG5ldHOIAAAAAAAAAACEZXRoMpC2eNdHAQAAhAEAAAAAAAAAgmlkgnY0gmlwhAoHAgOJc2VjcDI1NmsxoQLloM8VukrmSVDetKjK1tdPhqWcNs3A-uX7Lyu-yNSyD4hzeW5jbmV0cwCDdGNwgjLIg3VkcIIu4A \
@@ -142,7 +142,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     # import keystore
     docker run --rm \
       -v $(pwd)/cl/validator-$i:/data \
-      gcr.io/prysmaticlabs/prysm/validator:v3.1.2 \
+      gcr.io/prysmaticlabs/prysm/validator:v3.2.0 \
       accounts import \
       --wallet-dir=/data/wallet \
       --wallet-password-file=/data/wallet/password.txt \
@@ -157,7 +157,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --ip $VALIDATOR_NODE_IP \
       -v $(pwd)/cl/validator-$i:/data \
       -v $(pwd)/cl/config:/config \
-      gcr.io/prysmaticlabs/prysm/validator:v3.1.2 \
+      gcr.io/prysmaticlabs/prysm/validator:v3.2.0 \
       --beacon-rpc-provider=$BEACON_NODE_IP:4000 \
       --datadir=/data/validatordata \
       --accept-terms-of-use \
@@ -190,7 +190,7 @@ sh dora/start.sh
 # docker run --rm \
 #     -v $(pwd)/el/geth/.ethereum-relay:/.ethereum \
 #     -v $(pwd)/el/geth/genesis.json:/.genesis.json \
-#     ethereum/client-go:v1.10.26 \
+#     ethereum/client-go:v1.11.6 \
 #     --datadir /.ethereum init /.genesis.json
 
 # echo $JWT_SECRET > $(pwd)/el/geth/.ethereum-relay/jwtsecret
@@ -201,7 +201,7 @@ sh dora/start.sh
 #   -v $(pwd)/el/geth/.ethereum-relay:/.ethereum \
 #   -p 8551:8551 \
 #   -p 8545:8545 \
-#   ethereum/client-go:v1.10.26 \
+#   ethereum/client-go:v1.11.6 \
 #   --nat=extip:$EL_NODE_IP \
 #   --http \
 #   --http.api=eth,net,web3,debug,trace \
