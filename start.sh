@@ -104,7 +104,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --ip $BEACON_NODE_IP \
       -p 350$i:3500 \
       -v $(pwd)/cl/config:/config \
-      -p 3508:3500 \
+      -p 35$i:3500 \
       sigp/lighthouse:v4.6.0 \
       lighthouse \
       beacon_node \
