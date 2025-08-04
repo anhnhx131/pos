@@ -58,7 +58,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
 
   docker run --rm \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-    ethereum/client-go:v1.11.6 \
+    ethereum/client-go:v1.11.0 \
     account import --datadir /.ethereum --password /.ethereum/password.txt /.ethereum/private.key
   fi
 
@@ -66,7 +66,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
   docker run --rm \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
     -v $(pwd)/el/geth/genesis.json:/.genesis.json \
-    ethereum/client-go:v1.11.6 \
+    ethereum/client-go:v1.11.0 \
     --datadir /.ethereum init /.genesis.json
 
   # Run geth node
@@ -76,7 +76,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --ip $EL_NODE_IP \
     $( [ "$i" -eq 0 ] && echo "-p 8545:8545" ) \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-    ethereum/client-go:v1.11.6 \
+    ethereum/client-go:v1.11.0 \
     --nat=extip:$EL_NODE_IP \
     --http \
     --bootnodes=$BOOT_NODE \
@@ -190,7 +190,7 @@ sh dora/start.sh
 # docker run --rm \
 #     -v $(pwd)/el/geth/.ethereum-relay:/.ethereum \
 #     -v $(pwd)/el/geth/genesis.json:/.genesis.json \
-#     ethereum/client-go:v1.11.6 \
+#     ethereum/client-go:v1.11.0 \
 #     --datadir /.ethereum init /.genesis.json
 
 # echo $JWT_SECRET > $(pwd)/el/geth/.ethereum-relay/jwtsecret
@@ -201,7 +201,7 @@ sh dora/start.sh
 #   -v $(pwd)/el/geth/.ethereum-relay:/.ethereum \
 #   -p 8551:8551 \
 #   -p 8545:8545 \
-#   ethereum/client-go:v1.11.6 \
+#   ethereum/client-go:v1.11.0 \
 #   --nat=extip:$EL_NODE_IP \
 #   --http \
 #   --http.api=eth,net,web3,debug,trace \
