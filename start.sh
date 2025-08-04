@@ -58,7 +58,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
 
   docker run --rm \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-    ethereum/client-go:v1.11.0 \
+    ethereum/client-go:v1.11.6 \
     account import --datadir /.ethereum --password /.ethereum/password.txt /.ethereum/private.key
   fi
 
@@ -66,7 +66,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
   docker run --rm \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
     -v $(pwd)/el/geth/genesis.json:/.genesis.json \
-    ethereum/client-go:v1.11.0 \
+    ethereum/client-go:v1.11.6 \
     --datadir /.ethereum init /.genesis.json
 
   # Run geth node
@@ -76,7 +76,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --ip $EL_NODE_IP \
     $( [ "$i" -eq 0 ] && echo "-p 8545:8545" ) \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-    ethereum/client-go:v1.11.0 \
+    ethereum/client-go:v1.11.6 \
     --nat=extip:$EL_NODE_IP \
     --http \
     --bootnodes=$BOOT_NODE \
@@ -97,36 +97,52 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --password=/.ethereum/password.txt \
     $([ "$i" -eq 0 ] && echo "--nodekey /.ethereum/boot.key" || echo "")
 
-  # Run beacon node
-  docker run -d \
-    --name $BEACON_NODE_NAME \
-    --network $DOCKER_NETWORK_NAME \
-    --ip $BEACON_NODE_IP \
-    -p 350$i:3500 \
-    -v $(pwd)/cl/config:/config \
-    -v $(pwd)/cl/bn:/bn \
-    -v $(pwd)/cl/node-$i:/data/beacondata \
-    gcr.io/prysmaticlabs/prysm/beacon-chain:v3.2.0 \
-    --datadir=/data/beacondata \
-    --min-sync-peers=0 \
-    --bootstrap-node=enr:-MK4QNEUb1iPB3uijEwaIcGV5DgEeMDGSkUiSbuf92cWUO3vZLSVoamK0byi7FjhvBIUYYIWTjhPIsbsAA_37H1k-VaGAZhanexNh2F0dG5ldHOIAAAAAAAAAACEZXRoMpC2eNdHAQAAhAEAAAAAAAAAgmlkgnY0gmlwhAoHAgKJc2VjcDI1NmsxoQJZJFLCdVOkj35zGdm8bpM_AN2a8g_a4GWoXwTHOBP_XYhzeW5jbmV0cwCDdGNwgjLIg3VkcIIu4A,enr:-MK4QE1ufdj0_mtQqFV54k4UsrRZ9HNGRImX05aQqTQp2mGiUZOlolyxcDhWB1cfjT_imXgfB15_4OWZuCQrMUfxKfqGAZhane3Kh2F0dG5ldHOIAAAAAAAAAACEZXRoMpC2eNdHAQAAhAEAAAAAAAAAgmlkgnY0gmlwhAoHAgOJc2VjcDI1NmsxoQLloM8VukrmSVDetKjK1tdPhqWcNs3A-uX7Lyu-yNSyD4hzeW5jbmV0cwCDdGNwgjLIg3VkcIIu4A \
-    --chain-config-file=/config/config.yaml \
-    --chain-id=84 \
-    --network-id=84 \
-    --contract-deployment-block=0 \
-    --deposit-contract=0x4242424242424242424242424242424242424242 \
-    --http-web3provider=http://$EL_NODE_IP:8551 \
-    --accept-terms-of-use \
-    --jwt-secret=/config/jwtsecret \
-    --enable-debug-rpc-endpoints \
-    --verbosity=debug \
-    --rpc-host=0.0.0.0 \
-    --rpc-port=4000 \
-    --grpc-gateway-host=0.0.0.0 \
-    --p2p-host-ip=$BEACON_NODE_IP \
-    --p2p-local-ip=0.0.0.0 \
-    --enable-upnp \
-    $([ "$i" -eq 0 ] || [ "$i" -eq 1 ] && echo "--p2p-priv-key=/bn/privkey$i" || echo "")
+  if [ "$i" -gt 1 ]; then
+    docker run -d\
+      --name $BEACON_NODE_NAME \
+      --network $DOCKER_NETWORK_NAME \
+      --ip $BEACON_NODE_IP \
+      -p 350$i:3500 \
+      -v $(pwd)/cl/config:/config \
+      -p 3508:3500 \
+      sigp/lighthouse:v4.6.0 \
+      lighthouse \
+      beacon_node \
+      --datadir=/data \
+      --http \
+      --http-address=0.0.0.0 \
+      --http-port=3500 \
+      --http-allow-origin=* \
+      --debug-level=debug \
+      --execution-endpoint=http://$EL_NODE_IP:8551 \
+      --execution-jwt=/config/jwtsecret \
+      --testnet-dir=/config \
+      --boot-nodes=enr:-IS4QPOOGJE5V8GmhjshFUZ0pHWWWV008jgMGH3reH3HMtoEIR8UPrnl4OQO4xNSuwAtcgL6Omf4YPqi0zxMYO1GevUBgmlkgnY0gmlwhAoHAgKJc2VjcDI1NmsxoQOIhz10UYFO65iCNMMmcXHJQmk2FRNrqm0KoNtpBCicpoN1ZHCCIyg,enr:-IS4QATvRDQtMnslfe2DDfQ9au3gvF0oD9yrUswhLMWycafWPLOU9ZjXG0L0m9RJq-7V3lFhKXm9nVslPfizMgvfQZsBgmlkgnY0gmlwhAoHAgOJc2VjcDI1NmsxoQLh78RCFhcrgZ5tKgayyL9TTVXnK8mIlzBZoWiYQqdlUoN1ZHCCIyg \
+      --disable-upnp \
+      --enr-address=$BEACON_NODE_IP \
+      --listen-address=$BEACON_NODE_IP \
+      --enr-tcp-port=9000 \
+      --enr-udp-port=9000 \
+      --enable-private-discovery \
+      --target-peers=1
+  else
+    docker run -d \
+      --name $BEACON_NODE_NAME \
+      --network $DOCKER_NETWORK_NAME \
+      --ip $BEACON_NODE_IP \
+      -p 350$i:3500 \
+      -v $(pwd)/cl/bn$i:/data \
+      -v $(pwd)/cl/config:/config \
+      sigp/lighthouse:v4.6.0 \
+      lighthouse \
+      boot_node \
+      --datadir=/data \
+      --testnet-dir=/config \
+      --disable-packet-filter \
+      --enable-enr-auto-update \
+      --enr-address=$BEACON_NODE_IP \
+      --listen-address=$BEACON_NODE_IP
+  fi
 
   # Run validator node
   if [ "$i" -gt 1 ]; then
@@ -169,48 +185,8 @@ for (( i=0; i<$NUM_NODES; i++ )); do
 
 done
 
-# # Vote for the miner
-# for (( i=0; i<$NUM_NODES; i++ )); do
-#   EL_NODE_PUBLIC_KEY=$(echo ${MINER_NODES[$i]} | jq -r .public_key)
-#   # Vote for other nodes as the miner
-#   for (( j=0; j<$NUM_NODES; j++ )); do
-#     if [ $i != $j ]; then
-#       docker exec -it pos_node$j-el sh -c "geth attach --exec \"clique.propose('\"0x$EL_NODE_PUBLIC_KEY\"', true)\" /.ethereum/geth.ipc"
-#     fi
-#   done
-# done
-# sleep 5
-
 # Run dora explorer
 sh dora/start.sh
-
-# # Run relay node
-# EL_NODE_IP="10.7.0.$((NUM_NODES+2))"
-# docker run --rm \
-#     -v $(pwd)/el/geth/.ethereum-relay:/.ethereum \
-#     -v $(pwd)/el/geth/genesis.json:/.genesis.json \
-#     ethereum/client-go:v1.11.0 \
-#     --datadir /.ethereum init /.genesis.json
-
-# echo $JWT_SECRET > $(pwd)/el/geth/.ethereum-relay/jwtsecret
-
-# docker run -d \
-#   --name el-geth-relay-node \
-#   --network $DOCKER_NETWORK_NAME \
-#   -v $(pwd)/el/geth/.ethereum-relay:/.ethereum \
-#   -p 8551:8551 \
-#   -p 8545:8545 \
-#   ethereum/client-go:v1.11.0 \
-#   --nat=extip:$EL_NODE_IP \
-#   --http \
-#   --http.api=eth,net,web3,debug,trace \
-#   --http.addr=0.0.0.0 \
-#   --http.corsdomain=* \
-#   --http.vhosts=* \
-#   --datadir=/.ethereum \
-#   --syncmode=full \
-#   --bootnodes=$BOOT_NODE \
-#   --networkid=1337 \
 
 # deposit
 sleep 3
