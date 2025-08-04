@@ -158,13 +158,17 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     # import keystore
     docker run --rm \
       -v $(pwd)/cl/validator-$i:/data \
-      gcr.io/prysmaticlabs/prysm/validator:v3.2.0 \
-      accounts import \
-      --wallet-dir=/data/wallet \
-      --wallet-password-file=/data/wallet/password.txt \
-      --keys-dir=/data/validator_keys \
-      --account-password-file=/data/validator_keys/password.txt \
-      --accept-terms-of-use
+      -v $(pwd)/cl/config:/config \
+      sigp/lighthouse:v4.6.0 \
+      lighthouse \
+      account_manager \
+      validator \
+      import \
+      --datadir=/data \
+      --directory=/data/validator_keys \
+      --password-file=/data/validator_keys/password.txt \
+      --testnet-dir=/config \
+      --reuse-password
 
     # run validator client
     docker run -d \
@@ -173,14 +177,12 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --ip $VALIDATOR_NODE_IP \
       -v $(pwd)/cl/validator-$i:/data \
       -v $(pwd)/cl/config:/config \
-      gcr.io/prysmaticlabs/prysm/validator:v3.2.0 \
-      --beacon-rpc-provider=$BEACON_NODE_IP:4000 \
-      --datadir=/data/validatordata \
-      --accept-terms-of-use \
-      --chain-config-file=/config/config.yaml \
-      --wallet-dir=/data/wallet \
-      --wallet-password-file=/data/wallet/password.txt \
-      --suggested-fee-recipient=0x23081455D3FEaf17426176dfc5Ee7A3ce519aD33
+      sigp/lighthouse:v4.6.0 \
+      lighthouse \
+      validator_client \
+      --validators-dir=/data/validators \
+      --testnet-dir=/config \
+      --beacon-nodes=http://$BEACON_NODE_IP:3500
   fi
 
 done
