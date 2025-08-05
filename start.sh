@@ -123,7 +123,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --listen-address=$BEACON_NODE_IP \
       --enr-tcp-port=9000 \
       --enr-udp-port=9000 \
-      --enable-private-discovery \
+      --enable-private-discovery
   else
     docker run -d \
       --name $BEACON_NODE_NAME \
