@@ -56,10 +56,8 @@ for (( i=0; i<$NUM_NODES; i++ )); do
   # beacon node
   BEACON_NODE_IP="10.7.2.$((i+BOOT_NODES+2))"
   BEACON_NODE_NAME="pos_node$i-beacon"
-  BEACON_NODE_PRIVATE_KEY=$(echo ${MINER_NODES[$i]} | jq -r .private_key)
-  BEACON_NODE_PUBLIC_KEY=$(echo ${MINER_NODES[$i]} | jq -r .public_key)
   # validator
-  VALIDATOR_NODE_IP="10.7.3.$((i+2))"
+  VALIDATOR_NODE_IP="10.7.3.$((i+BOOT_NODES+2))"
   VALIDATOR_NODE_NAME="pos_node$i-validator"
 
   # define geth data dir
@@ -68,17 +66,17 @@ for (( i=0; i<$NUM_NODES; i++ )); do
 
   if [ "$i" -eq 0 ]; then
     # Create keystore
-  echo $EL_NODE_PRIVATE_KEY > $(pwd)/el/geth/.ethereum-$i/private.key
-  echo "password" > $(pwd)/el/geth/.ethereum-$i/password.txt
-  
-  if [ $i == 0 ]; then
-    echo $BOOT_NODE_KEY > $(pwd)/el/geth/.ethereum-$i/boot.key
-  fi
+    echo $EL_NODE_PRIVATE_KEY > $(pwd)/el/geth/.ethereum-$i/private.key
+    echo "password" > $(pwd)/el/geth/.ethereum-$i/password.txt
+    
+    if [ $i == 0 ]; then
+      echo $BOOT_NODE_KEY > $(pwd)/el/geth/.ethereum-$i/boot.key
+    fi
 
-  docker run --rm \
-    -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-    ethereum/client-go:v1.11.5 \
-    account import --datadir /.ethereum --password /.ethereum/password.txt /.ethereum/private.key
+    docker run --rm \
+      -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
+      ethereum/client-go:v1.11.5 \
+      account import --datadir /.ethereum --password /.ethereum/password.txt /.ethereum/private.key
   fi
 
   # Init node
@@ -123,7 +121,6 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --ip $BEACON_NODE_IP \
     -p 350$i:3500 \
     -v $(pwd)/cl/config:/config \
-    -p 35$i:3500 \
     sigp/lighthouse:v4.0.1 \
     lighthouse \
     beacon_node \
