@@ -21,7 +21,7 @@ for (( i=0; i<$BOOT_NODES; i++ )); do
     --ip $BOOT_NODE_IP \
     -v $(pwd)/cl/bn$i:/data \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v7.1.0 \
+    sigp/lighthouse \
     lighthouse \
     boot_node \
     --datadir=/data \
@@ -109,7 +109,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --ip $BEACON_NODE_IP \
     -p 350$i:3500 \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v7.1.0 \
+    sigp/lighthouse \
     lighthouse \
     beacon_node \
     --datadir=/data \
@@ -144,7 +144,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
   docker run --rm \
     -v $(pwd)/cl/validator-$i:/data \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v7.1.0 \
+    sigp/lighthouse \
     lighthouse \
     account_manager \
     validator \
@@ -162,7 +162,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --ip $VALIDATOR_NODE_IP \
     -v $(pwd)/cl/validator-$i:/data \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v7.1.0 \
+    sigp/lighthouse \
     lighthouse \
     validator_client \
     --validators-dir=/data/validators \
@@ -208,4 +208,4 @@ sh deposit.sh
 sh dora/start.sh
 
 # Run blockscout
-sh blockscout/start.sh
+# sh blockscout/start.sh
