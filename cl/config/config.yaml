@@ -1,4 +1,4 @@
-PRESET_BASE: 'mainnet'
+PRESET_BASE: 'gnosis'
 CONFIG_NAME: 'joc'
 
 # Genesis
@@ -43,7 +43,7 @@ CAPELLA_FORK_EPOCH: 30
 # Time parameters
 # ---------------------------------------------------------------
 # 5 seconds
-SECONDS_PER_SLOT: 12
+SECONDS_PER_SLOT: 5
 SLOTS_PER_EPOCH: 5
 # 14 (estimate from Eth1 mainnet)
 SECONDS_PER_ETH1_BLOCK: 5
