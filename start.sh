@@ -2,7 +2,6 @@
 source $(pwd)/config.sh
 
 VALDAITOR_KEY_PASSWORD="password"
-WALLET_PASSWORD="DguT9Mae0JkzP4ycirCH@@@@" 
 
 SUBNET=10.7.0.0/16
 
@@ -22,7 +21,7 @@ for (( i=0; i<$BOOT_NODES; i++ )); do
     --ip $BOOT_NODE_IP \
     -v $(pwd)/cl/bn$i:/data \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v4.0.1 \
+    sigp/lighthouse:v7.1.0 \
     lighthouse \
     boot_node \
     --datadir=/data \
@@ -30,7 +29,7 @@ for (( i=0; i<$BOOT_NODES; i++ )); do
     --disable-packet-filter \
     --enable-enr-auto-update \
     --listen-address=$BOOT_NODE_IP \
-    $BOOT_NODE_IP
+    --enr-address=$BOOT_NODE_IP
 done
 
 # Start additional nodes dynamically
@@ -45,6 +44,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
   # validator
   VALIDATOR_NODE_IP="10.7.3.$((i+BOOT_NODES+2))"
   VALIDATOR_NODE_NAME="pos_node$i-validator"
+  VALIDATOR_API_TOKEN=R6YhbDO6gKjNMydtZHcaCovFbQ0izq5Hk
 
   # define geth data dir
   mkdir -p $(pwd)/el/geth/.ethereum-$i
@@ -109,7 +109,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --ip $BEACON_NODE_IP \
     -p 350$i:3500 \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v4.0.1 \
+    sigp/lighthouse:v7.1.0 \
     lighthouse \
     beacon_node \
     --datadir=/data \
@@ -128,22 +128,23 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --listen-address=$BEACON_NODE_IP \
     --enr-tcp-port=9000 \
     --enr-udp-port=9000 \
+    --gui \
     --enable-private-discovery
 
   # Run validator node
   # create key
   mkdir -p $(pwd)/cl/validator-$i
-  # mkdir -p $(pwd)/cl/validator-$i/wallet
+  mkdir -p $(pwd)/cl/validator-$i/validators
   mkdir -p $(pwd)/cl/validator-$i/validator_keys
   echo ${BEACON_VALIDATORS[$i]} > $(pwd)/cl/validator-$i/validator_keys/keystore-m_12381_3600_1_0_0-$(date +%s).json
   echo $VALDAITOR_KEY_PASSWORD > $(pwd)/cl/validator-$i/validator_keys/password.txt
-  # echo $WALLET_PASSWORD > $(pwd)/cl/validator-$i/wallet/password.txt
+  printf $VALIDATOR_API_TOKEN > $(pwd)/cl/validator-$i/validators/api-token.txt
 
   # import keystore
   docker run --rm \
     -v $(pwd)/cl/validator-$i:/data \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v4.0.1 \
+    sigp/lighthouse:v7.1.0 \
     lighthouse \
     account_manager \
     validator \
@@ -161,19 +162,50 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --ip $VALIDATOR_NODE_IP \
     -v $(pwd)/cl/validator-$i:/data \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v4.0.1 \
+    sigp/lighthouse:v7.1.0 \
     lighthouse \
     validator_client \
     --validators-dir=/data/validators \
     --testnet-dir=/config \
     --beacon-nodes=http://$BEACON_NODE_IP:3500 \
+    --http \
+    --http-address=0.0.0.0 \
+    --unencrypted-http-transport \
+    --http-port=5062 \
+    --http-allow-origin=* \
     --suggested-fee-recipient=0x23081455D3FEaf17426176dfc5Ee7A3ce519aD33
 
-done
+  # Run siren UI
+  mkdir -p $(pwd)/cl/validator-$i/siren
+  cat > $(pwd)/cl/validator-$i/siren/.env << EOF
+BEACON_URL=http://$BEACON_NODE_IP:3500
+VALIDATOR_URL=http://$VALIDATOR_NODE_IP:5062
+API_TOKEN=$VALIDATOR_API_TOKEN
+SESSION_PASSWORD=password
+SSL_ENABLED=false
+DEBUG=false
+# don't change these when building the docker image, only change when running outside of docker
+PORT=3000
+BACKEND_URL=http://127.0.0.1:3001
+# if BACKEND_URL is changed, BACKEND_PORT must have a matching port
+BACKEND_PORT=3001
+EOF
 
-# Run dora explorer
-sh dora/start.sh
+  docker run -d \
+    --network pos-network \
+    --name pos_siren-$i \
+    --restart=unless-stopped \
+    -p 344$i:80 \
+    --env-file $(pwd)/cl/validator-$i/siren/.env \
+    sigp/siren
+done
 
 # deposit
 sleep 3
 sh deposit.sh
+
+# Run dora explorer
+sh dora/start.sh
+
+# Run blockscout
+sh blockscout/start.sh
