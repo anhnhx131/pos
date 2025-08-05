@@ -140,8 +140,8 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --testnet-dir=/config \
       --disable-packet-filter \
       --enable-enr-auto-update \
-      --enr-address=$BEACON_NODE_IP \
-      --listen-address=$BEACON_NODE_IP
+      --listen-address=$BEACON_NODE_IP \
+      $BEACON_NODE_IP
   fi
 
   # Run validator node
