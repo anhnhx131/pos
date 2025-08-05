@@ -20,33 +20,8 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --datadir /.ethereum init /.genesis.json
 
   # Run geth node
-  docker run -d \
-    --name $EL_NODE_NAME \
-    --network $DOCKER_NETWORK_NAME \
-    --ip $EL_NODE_IP \
-    $( [ "$i" -eq 0 ] && echo "-p 8545:8545" ) \
-    -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-    ethereum/client-go:v1.11.5 \
-    --nat=extip:$EL_NODE_IP \
-    --http \
-    --bootnodes=$BOOT_NODE \
-    --http.api=eth,net,web3,debug,trace,engine,admin \
-    --http.addr=0.0.0.0 \
-    --http.corsdomain=* \
-    --http.vhosts=* \
-    --datadir=/.ethereum \
-    --allow-insecure-unlock \
-    $([ "$i" -eq 0 ] && echo "--unlock=$EL_NODE_PUBLIC_KEY" || echo "") \
-    $([ "$i" -eq 0 ] && echo "--miner.etherbase=$EL_NODE_PUBLIC_KEY" || echo "") \
-    $([ "$i" -eq 0 ] && echo "--mine" || echo "") \
-    --networkid=84 \
-    --authrpc.vhosts=* \
-    --authrpc.addr=0.0.0.0 \
-    --authrpc.jwtsecret=/.ethereum/jwtsecret \
-    --syncmode=full \
-    --password=/.ethereum/password.txt \
-    $([ "$i" -eq 0 ] && echo "--nodekey /.ethereum/boot.key" || echo "")
+  docker restart $EL_NODE_NAME
 
-  sleep 30
+  sleep 5
 
 done
