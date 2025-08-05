@@ -124,7 +124,6 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --enr-tcp-port=9000 \
       --enr-udp-port=9000 \
       --enable-private-discovery \
-      --target-peers=1
   else
     docker run -d \
       --name $BEACON_NODE_NAME \
