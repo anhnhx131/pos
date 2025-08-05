@@ -25,17 +25,36 @@ if ! docker network inspect $DOCKER_NETWORK_NAME >/dev/null 2>&1; then
   docker network create $DOCKER_NETWORK_NAME --driver bridge --subnet $SUBNET
 fi
 
-# Run miner node
-echo "Initializing Ethereum node..."
+# Run bootnode
+for (( i=0; i<$BOOT_NODES; i++ )); do
+  BOOT_NODE_IP="10.7.2.$((i+2))"
+  BOOT_NODE_NAME="pos_bootnode$i"
+
+  docker run -d \
+    --name $BOOT_NODE_NAME \
+    --network $DOCKER_NETWORK_NAME \
+    --ip $BOOT_NODE_IP \
+    -v $(pwd)/cl/bn$i:/data \
+    -v $(pwd)/cl/config:/config \
+    sigp/lighthouse:v4.0.1 \
+    lighthouse \
+    boot_node \
+    --datadir=/data \
+    --testnet-dir=/config \
+    --disable-packet-filter \
+    --enable-enr-auto-update \
+    --listen-address=$BOOT_NODE_IP \
+    $BOOT_NODE_IP
+done
 
 # Start additional nodes dynamically
 for (( i=0; i<$NUM_NODES; i++ )); do
-  EL_NODE_IP="10.7.1.$((i+2))"
+  EL_NODE_IP="10.7.1.$((i+BOOT_NODES+2))"
   EL_NODE_NAME="pos_node$i-el"
   EL_NODE_PRIVATE_KEY=$(echo ${MINER_NODES[$i]} | jq -r .private_key)
   EL_NODE_PUBLIC_KEY=$(echo ${MINER_NODES[$i]} | jq -r .public_key)
   # beacon node
-  BEACON_NODE_IP="10.7.2.$((i+2))"
+  BEACON_NODE_IP="10.7.2.$((i+BOOT_NODES+2))"
   BEACON_NODE_NAME="pos_node$i-beacon"
   BEACON_NODE_PRIVATE_KEY=$(echo ${MINER_NODES[$i]} | jq -r .private_key)
   BEACON_NODE_PUBLIC_KEY=$(echo ${MINER_NODES[$i]} | jq -r .public_key)
@@ -97,94 +116,73 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --password=/.ethereum/password.txt \
     $([ "$i" -eq 0 ] && echo "--nodekey /.ethereum/boot.key" || echo "")
 
-  if [ "$i" -gt 1 ]; then
-    docker run -d\
-      --name $BEACON_NODE_NAME \
-      --network $DOCKER_NETWORK_NAME \
-      --ip $BEACON_NODE_IP \
-      -p 350$i:3500 \
-      -v $(pwd)/cl/config:/config \
-      -p 35$i:3500 \
-      sigp/lighthouse:v4.0.1 \
-      lighthouse \
-      beacon_node \
-      --datadir=/data \
-      --eth1 \
-      --http \
-      --http-address=0.0.0.0 \
-      --http-port=3500 \
-      --http-allow-origin=* \
-      --debug-level=debug \
-      --execution-endpoint=http://$EL_NODE_IP:8551 \
-      --execution-jwt=/config/jwtsecret \
-      --testnet-dir=/config \
-      --boot-nodes=enr:-IS4QPOOGJE5V8GmhjshFUZ0pHWWWV008jgMGH3reH3HMtoEIR8UPrnl4OQO4xNSuwAtcgL6Omf4YPqi0zxMYO1GevUBgmlkgnY0gmlwhAoHAgKJc2VjcDI1NmsxoQOIhz10UYFO65iCNMMmcXHJQmk2FRNrqm0KoNtpBCicpoN1ZHCCIyg,enr:-IS4QATvRDQtMnslfe2DDfQ9au3gvF0oD9yrUswhLMWycafWPLOU9ZjXG0L0m9RJq-7V3lFhKXm9nVslPfizMgvfQZsBgmlkgnY0gmlwhAoHAgOJc2VjcDI1NmsxoQLh78RCFhcrgZ5tKgayyL9TTVXnK8mIlzBZoWiYQqdlUoN1ZHCCIyg \
-      --disable-upnp \
-      --enr-address=$BEACON_NODE_IP \
-      --listen-address=$BEACON_NODE_IP \
-      --enr-tcp-port=9000 \
-      --enr-udp-port=9000 \
-      --enable-private-discovery
-  else
-    docker run -d \
-      --name $BEACON_NODE_NAME \
-      --network $DOCKER_NETWORK_NAME \
-      --ip $BEACON_NODE_IP \
-      -p 350$i:3500 \
-      -v $(pwd)/cl/bn$i:/data \
-      -v $(pwd)/cl/config:/config \
-      sigp/lighthouse:v4.0.1 \
-      lighthouse \
-      boot_node \
-      --datadir=/data \
-      --testnet-dir=/config \
-      --disable-packet-filter \
-      --enable-enr-auto-update \
-      --listen-address=$BEACON_NODE_IP \
-      --enr-address=$BEACON_NODE_IP
-  fi
+  # Run beacon node
+  docker run -d \
+    --name $BEACON_NODE_NAME \
+    --network $DOCKER_NETWORK_NAME \
+    --ip $BEACON_NODE_IP \
+    -p 350$i:3500 \
+    -v $(pwd)/cl/config:/config \
+    -p 35$i:3500 \
+    sigp/lighthouse:v4.0.1 \
+    lighthouse \
+    beacon_node \
+    --datadir=/data \
+    --eth1 \
+    --http \
+    --http-address=0.0.0.0 \
+    --http-port=3500 \
+    --http-allow-origin=* \
+    --debug-level=debug \
+    --execution-endpoint=http://$EL_NODE_IP:8551 \
+    --execution-jwt=/config/jwtsecret \
+    --testnet-dir=/config \
+    --boot-nodes=enr:-IS4QPOOGJE5V8GmhjshFUZ0pHWWWV008jgMGH3reH3HMtoEIR8UPrnl4OQO4xNSuwAtcgL6Omf4YPqi0zxMYO1GevUBgmlkgnY0gmlwhAoHAgKJc2VjcDI1NmsxoQOIhz10UYFO65iCNMMmcXHJQmk2FRNrqm0KoNtpBCicpoN1ZHCCIyg,enr:-IS4QATvRDQtMnslfe2DDfQ9au3gvF0oD9yrUswhLMWycafWPLOU9ZjXG0L0m9RJq-7V3lFhKXm9nVslPfizMgvfQZsBgmlkgnY0gmlwhAoHAgOJc2VjcDI1NmsxoQLh78RCFhcrgZ5tKgayyL9TTVXnK8mIlzBZoWiYQqdlUoN1ZHCCIyg \
+    --disable-upnp \
+    --enr-address=$BEACON_NODE_IP \
+    --listen-address=$BEACON_NODE_IP \
+    --enr-tcp-port=9000 \
+    --enr-udp-port=9000 \
+    --enable-private-discovery
 
   # Run validator node
-  if [ "$i" -gt 1 ]; then
-    VALIDATOR_INDEX=$((i-2))
-    # create key
-    mkdir -p $(pwd)/cl/validator-$i
-    # mkdir -p $(pwd)/cl/validator-$i/wallet
-    mkdir -p $(pwd)/cl/validator-$i/validator_keys
-    echo ${BEACON_VALIDATORS[$VALIDATOR_INDEX]} > $(pwd)/cl/validator-$i/validator_keys/keystore-m_12381_3600_1_0_0-$(date +%s).json
-    echo $VALDAITOR_KEY_PASSWORD > $(pwd)/cl/validator-$i/validator_keys/password.txt
-    # echo $WALLET_PASSWORD > $(pwd)/cl/validator-$i/wallet/password.txt
+  # create key
+  mkdir -p $(pwd)/cl/validator-$i
+  # mkdir -p $(pwd)/cl/validator-$i/wallet
+  mkdir -p $(pwd)/cl/validator-$i/validator_keys
+  echo ${BEACON_VALIDATORS[$i]} > $(pwd)/cl/validator-$i/validator_keys/keystore-m_12381_3600_1_0_0-$(date +%s).json
+  echo $VALDAITOR_KEY_PASSWORD > $(pwd)/cl/validator-$i/validator_keys/password.txt
+  # echo $WALLET_PASSWORD > $(pwd)/cl/validator-$i/wallet/password.txt
 
-    # import keystore
-    docker run --rm \
-      -v $(pwd)/cl/validator-$i:/data \
-      -v $(pwd)/cl/config:/config \
-      sigp/lighthouse:v4.0.1 \
-      lighthouse \
-      account_manager \
-      validator \
-      import \
-      --datadir=/data \
-      --directory=/data/validator_keys \
-      --password-file=/data/validator_keys/password.txt \
-      --testnet-dir=/config \
-      --reuse-password
+  # import keystore
+  docker run --rm \
+    -v $(pwd)/cl/validator-$i:/data \
+    -v $(pwd)/cl/config:/config \
+    sigp/lighthouse:v4.0.1 \
+    lighthouse \
+    account_manager \
+    validator \
+    import \
+    --datadir=/data \
+    --directory=/data/validator_keys \
+    --password-file=/data/validator_keys/password.txt \
+    --testnet-dir=/config \
+    --reuse-password
 
-    # run validator client
-    docker run -d \
-      --name $VALIDATOR_NODE_NAME \
-      --network $DOCKER_NETWORK_NAME \
-      --ip $VALIDATOR_NODE_IP \
-      -v $(pwd)/cl/validator-$i:/data \
-      -v $(pwd)/cl/config:/config \
-      sigp/lighthouse:v4.0.1 \
-      lighthouse \
-      validator_client \
-      --validators-dir=/data/validators \
-      --testnet-dir=/config \
-      --beacon-nodes=http://$BEACON_NODE_IP:3500 \
-      --suggested-fee-recipient=0x23081455D3FEaf17426176dfc5Ee7A3ce519aD33
-  fi
+  # run validator client
+  docker run -d \
+    --name $VALIDATOR_NODE_NAME \
+    --network $DOCKER_NETWORK_NAME \
+    --ip $VALIDATOR_NODE_IP \
+    -v $(pwd)/cl/validator-$i:/data \
+    -v $(pwd)/cl/config:/config \
+    sigp/lighthouse:v4.0.1 \
+    lighthouse \
+    validator_client \
+    --validators-dir=/data/validators \
+    --testnet-dir=/config \
+    --beacon-nodes=http://$BEACON_NODE_IP:3500 \
+    --suggested-fee-recipient=0x23081455D3FEaf17426176dfc5Ee7A3ce519aD33
 
 done
 
