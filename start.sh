@@ -192,7 +192,7 @@ BACKEND_PORT=3001
 EOF
 
   docker run -d \
-    --network pos-network \
+    --network $DOCKER_NETWORK_NAME \
     --name pos_siren-$i \
     --restart=unless-stopped \
     -p 344$i:80 \
@@ -201,7 +201,7 @@ EOF
 done
 
 # deposit
-sleep 3
+sleep 10
 sh deposit.sh
 
 # Run dora explorer
