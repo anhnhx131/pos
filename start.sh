@@ -58,7 +58,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
 
   docker run --rm \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-    ethereum/client-go:v1.11.6 \
+    ethereum/client-go:v1.11.5 \
     account import --datadir /.ethereum --password /.ethereum/password.txt /.ethereum/private.key
   fi
 
@@ -66,7 +66,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
   docker run --rm \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
     -v $(pwd)/el/geth/genesis.json:/.genesis.json \
-    ethereum/client-go:v1.11.6 \
+    ethereum/client-go:v1.11.5 \
     --datadir /.ethereum init /.genesis.json
 
   # Run geth node
@@ -76,7 +76,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --ip $EL_NODE_IP \
     $( [ "$i" -eq 0 ] && echo "-p 8545:8545" ) \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-    ethereum/client-go:v1.11.6 \
+    ethereum/client-go:v1.11.5 \
     --nat=extip:$EL_NODE_IP \
     --http \
     --bootnodes=$BOOT_NODE \
@@ -105,7 +105,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       -p 350$i:3500 \
       -v $(pwd)/cl/config:/config \
       -p 35$i:3500 \
-      sigp/lighthouse:v4.6.0 \
+      sigp/lighthouse:v4.0.1 \
       lighthouse \
       beacon_node \
       --datadir=/data \
@@ -133,7 +133,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       -p 350$i:3500 \
       -v $(pwd)/cl/bn$i:/data \
       -v $(pwd)/cl/config:/config \
-      sigp/lighthouse:v4.6.0 \
+      sigp/lighthouse:v4.0.1 \
       lighthouse \
       boot_node \
       --datadir=/data \
@@ -159,7 +159,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     docker run --rm \
       -v $(pwd)/cl/validator-$i:/data \
       -v $(pwd)/cl/config:/config \
-      sigp/lighthouse:v4.6.0 \
+      sigp/lighthouse:v4.0.1 \
       lighthouse \
       account_manager \
       validator \
@@ -177,12 +177,13 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --ip $VALIDATOR_NODE_IP \
       -v $(pwd)/cl/validator-$i:/data \
       -v $(pwd)/cl/config:/config \
-      sigp/lighthouse:v4.6.0 \
+      sigp/lighthouse:v4.0.1 \
       lighthouse \
       validator_client \
       --validators-dir=/data/validators \
       --testnet-dir=/config \
-      --beacon-nodes=http://$BEACON_NODE_IP:3500
+      --beacon-nodes=http://$BEACON_NODE_IP:3500 \
+      --suggested-fee-recipient=0x23081455D3FEaf17426176dfc5Ee7A3ce519aD33
   fi
 
 done
