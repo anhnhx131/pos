@@ -105,10 +105,11 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       -p 350$i:3500 \
       -v $(pwd)/cl/config:/config \
       -p 35$i:3500 \
-      sigp/lighthouse:v4.6.0 \
+      sigp/lighthouse:v3.1.2 \
       lighthouse \
       beacon_node \
       --datadir=/data \
+      --eth1 \
       --http \
       --http-address=0.0.0.0 \
       --http-port=3500 \
@@ -132,7 +133,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       -p 350$i:3500 \
       -v $(pwd)/cl/bn$i:/data \
       -v $(pwd)/cl/config:/config \
-      sigp/lighthouse:v4.6.0 \
+      sigp/lighthouse:v3.1.2 \
       lighthouse \
       boot_node \
       --datadir=/data \
@@ -158,7 +159,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     docker run --rm \
       -v $(pwd)/cl/validator-$i:/data \
       -v $(pwd)/cl/config:/config \
-      sigp/lighthouse:v4.6.0 \
+      sigp/lighthouse:v3.1.2 \
       lighthouse \
       account_manager \
       validator \
@@ -176,7 +177,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --ip $VALIDATOR_NODE_IP \
       -v $(pwd)/cl/validator-$i:/data \
       -v $(pwd)/cl/config:/config \
-      sigp/lighthouse:v4.6.0 \
+      sigp/lighthouse:v3.1.2 \
       lighthouse \
       validator_client \
       --validators-dir=/data/validators \
