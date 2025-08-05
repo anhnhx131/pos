@@ -151,7 +151,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     mkdir -p $(pwd)/cl/validator-$i
     # mkdir -p $(pwd)/cl/validator-$i/wallet
     mkdir -p $(pwd)/cl/validator-$i/validator_keys
-    echo ${BEACON_VALIDATORS[$VALIDATOR_INDEX]} > $(pwd)/cl/validator-$i/validator_keys/keystore-xxx-1749539045.json
+    echo ${BEACON_VALIDATORS[$VALIDATOR_INDEX]} > $(pwd)/cl/validator-$i/validator_keys/keystore-m_12381_3600_1_0_0-$(date +%s).json
     echo $VALDAITOR_KEY_PASSWORD > $(pwd)/cl/validator-$i/validator_keys/password.txt
     # echo $WALLET_PASSWORD > $(pwd)/cl/validator-$i/wallet/password.txt
 
