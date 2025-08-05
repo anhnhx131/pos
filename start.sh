@@ -105,7 +105,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       -p 350$i:3500 \
       -v $(pwd)/cl/config:/config \
       -p 35$i:3500 \
-      sigp/lighthouse:v3.1.2 \
+      sigp/lighthouse:v4.6.0 \
       lighthouse \
       beacon_node \
       --datadir=/data \
@@ -133,7 +133,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       -p 350$i:3500 \
       -v $(pwd)/cl/bn$i:/data \
       -v $(pwd)/cl/config:/config \
-      sigp/lighthouse:v3.1.2 \
+      sigp/lighthouse:v4.6.0 \
       lighthouse \
       boot_node \
       --datadir=/data \
@@ -141,7 +141,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --disable-packet-filter \
       --enable-enr-auto-update \
       --listen-address=$BEACON_NODE_IP \
-      $BEACON_NODE_IP
+      --enr-address=$BEACON_NODE_IP
   fi
 
   # Run validator node
@@ -149,17 +149,17 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     VALIDATOR_INDEX=$((i-2))
     # create key
     mkdir -p $(pwd)/cl/validator-$i
-    mkdir -p $(pwd)/cl/validator-$i/wallet
+    # mkdir -p $(pwd)/cl/validator-$i/wallet
     mkdir -p $(pwd)/cl/validator-$i/validator_keys
-    echo ${BEACON_VALIDATORS[$VALIDATOR_INDEX]} > $(pwd)/cl/validator-$i/validator_keys/keystore.json
+    echo ${BEACON_VALIDATORS[$VALIDATOR_INDEX]} > $(pwd)/cl/validator-$i/validator_keys/keystore-xxx-1749539045.json
     echo $VALDAITOR_KEY_PASSWORD > $(pwd)/cl/validator-$i/validator_keys/password.txt
-    echo $WALLET_PASSWORD > $(pwd)/cl/validator-$i/wallet/password.txt
+    # echo $WALLET_PASSWORD > $(pwd)/cl/validator-$i/wallet/password.txt
 
     # import keystore
     docker run --rm \
       -v $(pwd)/cl/validator-$i:/data \
       -v $(pwd)/cl/config:/config \
-      sigp/lighthouse:v3.1.2 \
+      sigp/lighthouse:v4.6.0 \
       lighthouse \
       account_manager \
       validator \
@@ -177,7 +177,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
       --ip $VALIDATOR_NODE_IP \
       -v $(pwd)/cl/validator-$i:/data \
       -v $(pwd)/cl/config:/config \
-      sigp/lighthouse:v3.1.2 \
+      sigp/lighthouse:v4.6.0 \
       lighthouse \
       validator_client \
       --validators-dir=/data/validators \
