@@ -198,7 +198,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
 #     -p 344$i:80 \
 #     --env-file $(pwd)/cl/validator-$i/siren/.env \
 #     sigp/siren
-# done
+done
 
 # deposit
 sleep 10
