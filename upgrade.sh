@@ -20,7 +20,7 @@ TIMESTAMP=$(( GENESIS_TIME + SLOTS_TOTAL * SECONDS_PER_SLOT ))
 echo "Timestamp: $TIMESTAMP"
 
 echo "Update genesis.json..."
-sed -i "s/9999999999999/$TIMESTAMP/g" el/geth/genesis.json
+sed -i "s/\"shanghaiTime\": [0-9]*/\"shanghaiTime\": $TIMESTAMP/g" el/geth/genesis.json
 
 echo "Init geth"
 # Start additional nodes dynamically
