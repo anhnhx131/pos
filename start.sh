@@ -176,29 +176,29 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --suggested-fee-recipient=0x23081455D3FEaf17426176dfc5Ee7A3ce519aD33
 
   # Run siren UI
-  mkdir -p $(pwd)/cl/validator-$i/siren
-  cat > $(pwd)/cl/validator-$i/siren/.env << EOF
-BEACON_URL=http://$BEACON_NODE_IP:3500
-VALIDATOR_URL=http://$VALIDATOR_NODE_IP:5062
-API_TOKEN=$VALIDATOR_API_TOKEN
-SESSION_PASSWORD=password
-SSL_ENABLED=false
-DEBUG=false
-# don't change these when building the docker image, only change when running outside of docker
-PORT=3000
-BACKEND_URL=http://127.0.0.1:3001
-# if BACKEND_URL is changed, BACKEND_PORT must have a matching port
-BACKEND_PORT=3001
-EOF
+#   mkdir -p $(pwd)/cl/validator-$i/siren
+#   cat > $(pwd)/cl/validator-$i/siren/.env << EOF
+# BEACON_URL=http://$BEACON_NODE_IP:3500
+# VALIDATOR_URL=http://$VALIDATOR_NODE_IP:5062
+# API_TOKEN=$VALIDATOR_API_TOKEN
+# SESSION_PASSWORD=password
+# SSL_ENABLED=false
+# DEBUG=false
+# # don't change these when building the docker image, only change when running outside of docker
+# PORT=3000
+# BACKEND_URL=http://127.0.0.1:3001
+# # if BACKEND_URL is changed, BACKEND_PORT must have a matching port
+# BACKEND_PORT=3001
+# EOF
 
-  docker run -d \
-    --network $DOCKER_NETWORK_NAME \
-    --name pos_siren-$i \
-    --restart=unless-stopped \
-    -p 344$i:80 \
-    --env-file $(pwd)/cl/validator-$i/siren/.env \
-    sigp/siren
-done
+#   docker run -d \
+#     --network $DOCKER_NETWORK_NAME \
+#     --name pos_siren-$i \
+#     --restart=unless-stopped \
+#     -p 344$i:80 \
+#     --env-file $(pwd)/cl/validator-$i/siren/.env \
+#     sigp/siren
+# done
 
 # deposit
 sleep 10
