@@ -4,6 +4,9 @@ docker rm -f $(docker ps -a --format '{{.Names}}' | grep pos | cat)
 
 # geth
 rm -Rf $SCRIPT_DIR/el/geth/.ethereum*
+# revert genesis.json
+echo "Revert genesis.json..."
+sed -i "s/\"shanghaiTime\": [0-9]*/\"shanghaiTime\": 9999999999999/g" el/geth/genesis.json
 
 # beacon node
 rm -Rf $SCRIPT_DIR/cl/node-*

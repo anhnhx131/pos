@@ -10,8 +10,13 @@ EPOCH=10
 GENESIS_TIME=$(curl -s $BEACON/eth/v1/beacon/genesis | jq -r '.data.genesis_time')
 
 # Lấy spec
-SECONDS_PER_SLOT=$(curl -s $BEACON/eth/v1/config/spec | jq -r '.data.seconds_per_slot')
-SLOTS_PER_EPOCH=$(curl -s $BEACON/eth/v1/config/spec | jq -r '.data.slots_per_epoch')
+SECONDS_PER_SLOT=$(curl -s $BEACON/eth/v1/config/spec | jq -r '.data.SECONDS_PER_SLOT')
+SLOTS_PER_EPOCH=$(curl -s $BEACON/eth/v1/config/spec | jq -r '.data.SLOTS_PER_EPOCH')
+
+echo "Seconds per slot: $SECONDS_PER_SLOT"
+echo "Slots per epoch: $SLOTS_PER_EPOCH"
+
+echo "Genesis time: $GENESIS_TIME"
 
 # Tính timestamp epoch
 SLOTS_TOTAL=$(( EPOCH * SLOTS_PER_EPOCH ))

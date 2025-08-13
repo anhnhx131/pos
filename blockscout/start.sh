@@ -1,36 +1,36 @@
 #!/bin/bash
 source $(pwd)/config.sh
 
-# Create keystore
-mkdir -p $(pwd)/blockscout/.ethereum
+# # Create keystore
+# mkdir -p $(pwd)/blockscout/.ethereum
 
-# Init node
-docker run --rm \
--v $(pwd)/blockscout/.ethereum:/.ethereum \
--v $(pwd)/el/geth/genesis.json:/.genesis.json \
-ethereum/client-go:v1.11.6 \
---datadir /.ethereum \
-init /.genesis.json
+# # Init node
+# docker run --rm \
+# -v $(pwd)/blockscout/.ethereum:/.ethereum \
+# -v $(pwd)/el/geth/genesis.json:/.genesis.json \
+# ethereum/client-go:v1.11.6 \
+# --datadir /.ethereum \
+# init /.genesis.json
 
-# Run node
-docker run -d \
-  --name pos-el-blockscout-archive-node \
-  --network $DOCKER_NETWORK_NAME \
-  -v $(pwd)/blockscout/.ethereum:/.ethereum \
-  ethereum/client-go:v1.11.6 \
-  --http \
-  --bootnodes=$BOOT_NODE \
-  --http.api=eth,net,web3,debug,trace \
-  --http.addr=0.0.0.0 \
-  --http.corsdomain=* \
-  --http.vhosts=* \
-  --datadir=/.ethereum \
-  --networkid=1337 \
-  --authrpc.vhosts=* \
-  --authrpc.addr=0.0.0.0 \
-  --authrpc.jwtsecret=/.ethereum/jwtsecret \
-  --syncmode=full \
-  --gcmode=archive
+# # Run node
+# docker run -d \
+#   --name pos-el-blockscout-archive-node \
+#   --network $DOCKER_NETWORK_NAME \
+#   -v $(pwd)/blockscout/.ethereum:/.ethereum \
+#   ethereum/client-go:v1.11.6 \
+#   --http \
+#   --bootnodes=$BOOT_NODE \
+#   --http.api=eth,net,web3,debug,trace \
+#   --http.addr=0.0.0.0 \
+#   --http.corsdomain=* \
+#   --http.vhosts=* \
+#   --datadir=/.ethereum \
+#   --networkid=1337 \
+#   --authrpc.vhosts=* \
+#   --authrpc.addr=0.0.0.0 \
+#   --authrpc.jwtsecret=/.ethereum/jwtsecret \
+#   --syncmode=full \
+#   --gcmode=archive
 
 # Run blockscout
 
@@ -68,7 +68,7 @@ docker run --rm --network $DOCKER_NETWORK_NAME \
 -e ECTO_USE_SSL=false \
 -e DATABASE_URL=postgresql://postgres:@pos-el-blockscout-postgres:5432/explorer?ssl=false \
 -e ETHEREUM_JSONRPC_VARIANT=geth \
--e ETHEREUM_JSONRPC_HTTP_URL=http://pos-el-blockscout-archive-node:8545/   gulabs/gu-blockscout:v6.10.2-gubuild.0 /bin/sh -c 'bin/blockscout eval "Elixir.Explorer.ReleaseTasks.create_and_migrate()"'
+-e ETHEREUM_JSONRPC_HTTP_URL=http://172.17.0.1:8545   gulabs/gu-blockscout:v6.10.2-gubuild.0 /bin/sh -c 'bin/blockscout eval "Elixir.Explorer.ReleaseTasks.create_and_migrate()"'
 
 # Start Blockscout
 docker run --name=pos-el-blockscout --network $DOCKER_NETWORK_NAME --restart="unless-stopped"  -d \
@@ -79,9 +79,8 @@ docker run --name=pos-el-blockscout --network $DOCKER_NETWORK_NAME --restart="un
 -e API_V2_ENABLED=true \
 -e DATABASE_URL=postgresql://postgres:@pos-el-blockscout-postgres:5432/explorer?ssl=false \
 -e ETHEREUM_JSONRPC_VARIANT=geth \
--e ETHEREUM_JSONRPC_HTTP_URL=http://pos-el-blockscout-archive-node:8545/ \
--e ETHEREUM_JSONRPC_TRACE_URL=http://pos-el-blockscout-archive-node:8545/ \
--e BLOCK_TRANSFORMER=clique \
+-e ETHEREUM_JSONRPC_HTTP_URL=http://172.17.0.1:8545 \
+-e ETHEREUM_JSONRPC_TRACE_URL=http://172.17.0.1:8545 \
 -e SECRET_KEY_BASE="$(openssl rand -hex 64)" \
 -e DISABLE_EXCHANGE_RATES=true \
 -e MICROSERVICE_SC_VERIFIER_ENABLED=true \
@@ -116,6 +115,11 @@ docker run --name=pos-el-blockscout-stats --network $DOCKER_NETWORK_NAME --resta
 #
 # Start Blockscout FE
 #
+
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+APP_IP_ADDRESS=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4)
+echo "APP_IP_ADDRESS: $APP_IP_ADDRESS"
+
 docker run --name=pos-el-blockscout-frontend --network $DOCKER_NETWORK_NAME --restart="unless-stopped" -d \
 -e NEXT_PUBLIC_NETWORK_ID=1337 \
 -e NEXT_PUBLIC_NETWORK_NAME="pos-devnet" \
@@ -128,14 +132,14 @@ docker run --name=pos-el-blockscout-frontend --network $DOCKER_NETWORK_NAME --re
 -e NEXT_PUBLIC_NETWORK_CURRENCY_SYMBOL="ETH" \
 -e NEXT_PUBLIC_APP_PROTOCOL="http" \
 -e NEXT_PUBLIC_API_PROTOCOL="http" \
--e NEXT_PUBLIC_API_HOST="18.138.224.170:9000" \
--e NEXT_PUBLIC_APP_HOST="18.138.224.170:9000" \
--e NEXT_PUBLIC_VISUALIZE_API_HOST="http://18.138.224.170:9000" \
+-e NEXT_PUBLIC_API_HOST="$APP_IP_ADDRESS:9000" \
+-e NEXT_PUBLIC_APP_HOST="$APP_IP_ADDRESS:9000" \
+-e NEXT_PUBLIC_VISUALIZE_API_HOST="http://$APP_IP_ADDRESS:9000" \
 -e NEXT_PUBLIC_VISUALIZE_API_BASE_PATH="/services/visualizer" \
--e NEXT_PUBLIC_STATS_API_HOST="http://18.138.224.170:9000" \
+-e NEXT_PUBLIC_STATS_API_HOST="http://$APP_IP_ADDRESS:9000" \
 -e NEXT_PUBLIC_STATS_API_BASE_PATH="/services/stats" \
 -e NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID="b293113c137b441c430d854b321888f6" \
--e NEXT_PUBLIC_NETWORK_RPC_URL="http://18.138.224.170:8545/" \
+-e NEXT_PUBLIC_NETWORK_RPC_URL="http://$APP_IP_ADDRESS:8545/" \
 -e NEXT_PUBLIC_VIEWS_CONTRACT_SOLIDITYSCAN_ENABLED=false \
 gulabs/gu-blockscout-frontend:v1.37.5-gubuild.0
 
