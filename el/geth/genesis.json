@@ -21,7 +21,14 @@
     "terminalTotalDifficulty": 100,
     "shanghaiTime": 9999999999999,
     "cancunTime": 9999999999999,
-    "pragueTime": 9999999999999
+    "pragueTime": 9999999999999,
+    "blobSchedule": {
+      "cancun": {
+        "maxBlobGasPerBlock": 786432,
+        "blobGasPerBlob": 131072,
+        "targetBlobGasPerBlock": 393216
+      }
+    }
   },
   "nonce": "0x0",
   "timestamp": "0x0",
