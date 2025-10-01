@@ -24,9 +24,9 @@
     "pragueTime": 9999999999999,
     "blobSchedule": {
       "cancun": {
-        "maxBlobGasPerBlock": 786432,
-        "blobGasPerBlob": 131072,
-        "targetBlobGasPerBlock": 393216
+        "target": 3,
+        "max": 6,
+        "baseFeeUpdateFraction": 3338477
       }
     }
   },
