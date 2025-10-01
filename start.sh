@@ -72,7 +72,6 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     ethereum/client-go:v1.11.5 \
     --datadir /.ethereum init /.genesis.json
 
-  
   # Run geth node
   docker run -d \
     --name $EL_NODE_NAME \
@@ -100,7 +99,6 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --syncmode=full \
     --password=/.ethereum/password.txt \
     $([ "$i" -eq 0 ] && echo "--nodekey /.ethereum/boot.key" || echo "")
-
   
   # Run beacon node
   docker run -d \
