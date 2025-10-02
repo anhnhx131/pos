@@ -69,6 +69,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --authrpc.addr=0.0.0.0 \
     --authrpc.jwtsecret=/.ethereum/jwtsecret \
     --syncmode=full \
+    --rpc.allow-unprotected-txs \
     $([ "$i" -eq 0 ] && echo "--nodekey /.ethereum/boot.key" || echo "")
 
   sleep 3

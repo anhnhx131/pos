@@ -98,6 +98,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --authrpc.jwtsecret=/.ethereum/jwtsecret \
     --syncmode=full \
     --password=/.ethereum/password.txt \
+    --rpc.allow-unprotected-txs \
     $([ "$i" -eq 0 ] && echo "--nodekey /.ethereum/boot.key" || echo "")
   
   # Run beacon node
