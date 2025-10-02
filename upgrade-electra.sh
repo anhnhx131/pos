@@ -4,7 +4,7 @@ source $(pwd)/config.sh
 # Run miner node
 echo "Read shanghai time..."
 BEACON=http://localhost:3500
-EPOCH=10
+EPOCH=13
 
 # Lấy thông tin genesis
 GENESIS_TIME=$(curl -s $BEACON/eth/v1/beacon/genesis | jq -r '.data.genesis_time')
@@ -25,7 +25,7 @@ TIMESTAMP=$(( GENESIS_TIME + SLOTS_TOTAL * SECONDS_PER_SLOT ))
 echo "Timestamp: $TIMESTAMP"
 
 echo "Update genesis.json..."
-sed -i "s/\"cancunTime\": [0-9]*/\"cancunTime\": $TIMESTAMP/g" el/geth/genesis.json
+sed -i "s/\"pragueTime\": [0-9]*/\"pragueTime\": $TIMESTAMP/g" el/geth/genesis.json
 
 echo "Init geth"
 # Start additional nodes dynamically
@@ -40,7 +40,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
   docker run --rm \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
     -v $(pwd)/el/geth/genesis.json:/.genesis.json \
-    ethereum/client-go:v1.14.13 \
+    ethereum/client-go:v1.15.9 \
     --datadir /.ethereum \
     init /.genesis.json
 
@@ -54,7 +54,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --ip $EL_NODE_IP \
     $( [ "$i" -eq 0 ] && echo "-p 8545:8545" ) \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-    ethereum/client-go:v1.14.13 \
+    ethereum/client-go:v1.15.9 \
     --nat=extip:$EL_NODE_IP \
     --http \
     --bootnodes=$BOOT_NODE \
