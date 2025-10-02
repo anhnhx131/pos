@@ -4,7 +4,7 @@ source $(pwd)/config.sh
 # Run miner node
 echo "Read shanghai time..."
 BEACON=http://localhost:3500
-EPOCH=10
+EPOCH=7
 
 # Lấy thông tin genesis
 GENESIS_TIME=$(curl -s $BEACON/eth/v1/beacon/genesis | jq -r '.data.genesis_time')

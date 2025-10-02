@@ -40,7 +40,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
   docker run --rm \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
     -v $(pwd)/el/geth/genesis.json:/.genesis.json \
-    ethereum/client-go:v1.15.9 \
+    ethereum/client-go:v1.13.15 \
     --datadir /.ethereum \
     init /.genesis.json
 
@@ -54,7 +54,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --ip $EL_NODE_IP \
     $( [ "$i" -eq 0 ] && echo "-p 8545:8545" ) \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-    ethereum/client-go:v1.15.9 \
+    ethereum/client-go:v1.13.15 \
     --nat=extip:$EL_NODE_IP \
     --http \
     --bootnodes=$BOOT_NODE \
