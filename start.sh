@@ -1,7 +1,7 @@
 #!/bin/bash
 source $(pwd)/config.sh
 
-VALDAITOR_KEY_PASSWORD="password"
+VALDAITOR_KEY_PASSWORD="password123456"
 
 SUBNET=10.7.0.0/16
 
