@@ -24,6 +24,10 @@ while [[ $# -gt 0 ]]; do
       BOOTNODE_NAME="$2"
       shift 2
       ;;
+    --ip)
+      BOOTNODE_IP="$2"
+      shift 2
+      ;;
     -h|--help)
       usage
       ;;
@@ -64,6 +68,8 @@ docker run -d \
   $LIGHTHOUSE_IMAGE \
   lighthouse \
   boot_node \
+  --listen-address=$BOOTNODE_IP \
+  --enr-address=$BOOTNODE_IP \
   --datadir=/data \
   --testnet-dir=/config \
   --disable-packet-filter \
