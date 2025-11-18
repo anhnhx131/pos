@@ -48,12 +48,13 @@ log_info "  Name: $BOOTNODE_NAME"
 # Create network if not exists
 create_docker_network
 
-# Ensure config artifacts exist
-ensure_lighthouse_config_files
-
 # Create bootnode data directory
-BOOTNODE_DIR="${CL_DIR}/bootnode"
+BOOTNODE_DIR="${ROOT_DIR}/bootnode"
+BOOTNODE_CONFIG_DIR="${BOOTNODE_DIR}/config"
 mkdir -p "$BOOTNODE_DIR"
+
+# Ensure config artifacts exist in bootnode config directory
+ensure_lighthouse_config_files "$BOOTNODE_CONFIG_DIR"
 
 # Stop and remove existing bootnode if running
 if docker ps -a --format '{{.Names}}' | grep -q "^${BOOTNODE_NAME}$"; then
@@ -68,7 +69,7 @@ DOCKER_CMD="docker run -d \
   --name $BOOTNODE_NAME \
   --network $DOCKER_NETWORK_NAME \
   -v $BOOTNODE_DIR:/data \
-  -v $CONFIG_DIR:/config \
+  -v $BOOTNODE_CONFIG_DIR:/config \
   -p 9000:9000/tcp \
   -p 9000:9000/udp \
   $LIGHTHOUSE_IMAGE \

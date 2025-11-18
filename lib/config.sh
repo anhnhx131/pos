@@ -14,9 +14,7 @@ export JWT_SECRET="${JWT_SECRET:-0xfad2709d0bb03bf0e8ba3c99bea194575d3e98863133d
 # Geth Configuration
 export GETH_IMAGE="${GETH_IMAGE:-ethereum/client-go:v1.11.5}"
 export GETH_BOOTNODE_KEY="${GETH_BOOTNODE_KEY:-31640af736ec4dfef9d776189b3ca4e6d7732d853b815ece7408c9d3c4e10433}"
-export GETH_BOOTNODE_IP="${GETH_BOOTNODE_IP:-10.7.1.4}"
-export GETH_BOOTNODE_PORT="${GETH_BOOTNODE_PORT:-30303}"
-export GETH_BOOTNODE_ENODE="${GETH_BOOTNODE_ENODE:-enode://0c284ba5ce93c5879aa2f0f6132fe19e0278d32b38c4eef8b3da8e3bdba743e02732bf542e5cb282b857dc2ae278cac5c383fc37d66b014f1ae1e183045a41ea@${GETH_BOOTNODE_IP}:${GETH_BOOTNODE_PORT}}"
+export GETH_BOOTNODE_ENODE="${GETH_BOOTNODE_ENODE:-enode://226ef2fb48ad84c9bb76a628fbe886ba7902222372698e0ba5999f740622f2a43d33f3ed47964d5651a25489b6d9579b4c36caf209ff33dc69b06fb57b5dffc2@54.254.232.133:30303}"
 
 # Lighthouse Configuration
 export LIGHTHOUSE_IMAGE="${LIGHTHOUSE_IMAGE:-sigp/lighthouse:v7.0.1}"
@@ -27,14 +25,23 @@ export DEPOSIT_CONTRACT_BLOCK="${DEPOSIT_CONTRACT_BLOCK:-0}"
 # Lighthouse Bootnodes
 export LIGHTHOUSE_BOOTNODE_0_IP="${LIGHTHOUSE_BOOTNODE_0_IP:-10.7.2.2}"
 export LIGHTHOUSE_BOOTNODE_1_IP="${LIGHTHOUSE_BOOTNODE_1_IP:-10.7.2.3}"
-export LIGHTHOUSE_BOOTNODES="${LIGHTHOUSE_BOOTNODES:-enr:-IS4QPOOGJE5V8GmhjshFUZ0pHWWWV008jgMGH3reH3HMtoEIR8UPrnl4OQO4xNSuwAtcgL6Omf4YPqi0zxMYO1GevUBgmlkgnY0gmlwhAoHAgKJc2VjcDI1NmsxoQOIhz10UYFO65iCNMMmcXHJQmk2FRNrqm0KoNtpBCicpoN1ZHCCIyg,enr:-IS4QATvRDQtMnslfe2DDfQ9au3gvF0oD9yrUswhLMWycafWPLOU9ZjXG0L0m9RJq-7V3lFhKXm9nVslPfizMgvfQZsBgmlkgnY0gmlwhAoHAgOJc2VjcDI1NmsxoQLh78RCFhcrgZ5tKgayyL9TTVXnK8mIlzBZoWiYQqdlUoN1ZHCCIyg}"
+export LIGHTHOUSE_BOOTNODES="${LIGHTHOUSE_BOOTNODES:enr:-IS4QDLOcskBCX3ZB3yhwlPvk2Q1XigdgzLoW3sn1JITswuhLjdMfdzTL4WqoU293vlrNcEGMqlV2ASvxl8DkoKgm88BgmlkgnY0gmlwhIhuXPGJc2VjcDI1NmsxoQPuYifGXE8PjOLLmnb5HkUxVmpNN6wc7WGjDooacKOXf4N1ZHCCIyg}"
 
 # Paths
 export ROOT_DIR="${ROOT_DIR:-$(pwd)}"
 export EL_DIR="${ROOT_DIR}/el"
 export CL_DIR="${ROOT_DIR}/cl"
 export CONFIG_DIR="${CL_DIR}/config"
-export GENESIS_FILE="${EL_DIR}/geth/genesis.json"
+# Only set default if not already set (allows override from calling scripts)
+export GENESIS_FILE="${GENESIS_FILE:-${EL_DIR}/geth/genesis.json}"
+
+# Single-node (VM) paths
+export NODE_DIR="${NODE_DIR:-${ROOT_DIR}/node}"
+export NODE_EL_DIR="${NODE_EL_DIR:-${NODE_DIR}/el}"
+export NODE_CL_DIR="${NODE_CL_DIR:-${NODE_DIR}/cl}"
+export NODE_CONFIG_DIR="${NODE_CONFIG_DIR:-${NODE_DIR}/config}"
+export NODE_GENESIS_FILE="${NODE_GENESIS_FILE:-${NODE_DIR}/genesis.json}"
+export NODE_JWT_FILE="${NODE_JWT_FILE:-${NODE_CONFIG_DIR}/jwtsecret}"
 
 # Default Node Configuration
 export DEFAULT_MINER_ACCOUNT="${DEFAULT_MINER_ACCOUNT:-0x23081455D3FEaf17426176dfc5Ee7A3ce519aD33}"
@@ -109,16 +116,17 @@ function build_lighthouse_config() {
 }
 
 function ensure_lighthouse_config_files() {
-  mkdir -p "$CONFIG_DIR"
-  local config_file="$CONFIG_DIR/config.yaml"
-  local deposit_block_file="$CONFIG_DIR/deposit_contract_block.txt"
+  local target_dir="${1:-$CONFIG_DIR}"
+  mkdir -p "$target_dir"
+  local config_file="$target_dir/config.yaml"
+  local deposit_block_file="$target_dir/deposit_contract_block.txt"
   if [ ! -f "$config_file" ]; then
-    log_info "config.yaml missing. Building default lighthouse config..."
+    log_info "config.yaml missing in $target_dir. Building default lighthouse config..."
     build_lighthouse_config "$NETWORK" "$config_file"
   fi
   if [ ! -f "$deposit_block_file" ]; then
     echo "$DEPOSIT_CONTRACT_BLOCK" > "$deposit_block_file"
-    log_info "Created default deposit_contract_block.txt ($DEPOSIT_CONTRACT_BLOCK)"
+    log_info "Created default deposit_contract_block.txt in $target_dir ($DEPOSIT_CONTRACT_BLOCK)"
   fi
 }
 
@@ -133,6 +141,15 @@ function build_geth_genesis() {
     --network "$network" \
     --output "$output" \
     "$@"
+}
+
+function ensure_node_directories() {
+  mkdir -p "$NODE_EL_DIR" "$NODE_CL_DIR" "$NODE_CONFIG_DIR"
+  ensure_lighthouse_config_files "$NODE_CONFIG_DIR"
+  if [ ! -f "$NODE_JWT_FILE" ]; then
+    echo "$JWT_SECRET" > "$NODE_JWT_FILE"
+    log_info "Created shared JWT secret at $NODE_JWT_FILE"
+  fi
 }
 
 # Color output

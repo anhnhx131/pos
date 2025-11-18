@@ -2,3 +2,5 @@ cl/*
 el/*  
 interact-eth1/*
 test/*
+node/*
+bootnode/*

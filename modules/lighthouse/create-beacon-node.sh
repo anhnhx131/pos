@@ -84,11 +84,11 @@ log_info "  EL Endpoint: $EL_ENDPOINT"
 # Create network if not exists
 create_docker_network
 
-# Ensure config artifacts exist
-ensure_lighthouse_config_files
+# Ensure node directories and config
+ensure_node_directories
 
 # Create beacon node data directory
-BEACON_DIR="${CL_DIR}/beacon"
+BEACON_DIR="$NODE_CL_DIR"
 mkdir -p "$BEACON_DIR"
 
 # Stop and remove existing node if running
@@ -105,7 +105,7 @@ DOCKER_CMD="docker run -d --name $NODE_NAME --network $DOCKER_NETWORK_NAME"
 [ -n "$HTTP_PORT" ] && DOCKER_CMD="$DOCKER_CMD -p ${HTTP_PORT}:3500"
 
 # Add volumes
-DOCKER_CMD="$DOCKER_CMD -v $BEACON_DIR:/data -v $CONFIG_DIR:/config"
+DOCKER_CMD="$DOCKER_CMD -v $BEACON_DIR:/data -v $NODE_CONFIG_DIR:/config"
 
 # Add lighthouse command
 DOCKER_CMD="$DOCKER_CMD $LIGHTHOUSE_IMAGE lighthouse beacon_node"

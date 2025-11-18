@@ -22,11 +22,12 @@ usage() {
   echo "  --el-rpc-port <port>         Expose EL RPC port (default: 8545)"
   echo "  --el-authrpc-port <port>     Expose EL Auth RPC port (default: 8551)"
   echo "  --cl-http-port <port>        Expose CL HTTP port (default: 3500)"
-  echo "  --node-index <index>         Node index (default: 0)"
+  echo "  --validator-keystore <json>  Validator keystore JSON (optional)"
+  echo "  --validator-password <pass>  Validator keystore password (optional)"
   exit 1
 }
 
-EL_BOOTNODE="enode://b46f3a72de8929722f27326dbd293b4db32bd24bb0785def5655455021ecd1b00f14ece923bdbfb3934820767038fa64df3f0a0cc99ba8f0c99dc6e8e8515c9e@52.77.211.211:30303"
+EL_BOOTNODE="enode://226ef2fb48ad84c9bb76a628fbe886ba7902222372698e0ba5999f740622f2a43d33f3ed47964d5651a25489b6d9579b4c36caf209ff33dc69b06fb57b5dffc2@54.254.232.133:30303"
 CL_BOOTNODES="enr:-IS4QPOOGJE5V8GmhjshFUZ0pHWWWV008jgMGH3reH3HMtoEIR8UPrnl4OQO4xNSuwAtcgL6Omf4YPqi0zxMYO1GevUBgmlkgnY0gmlwhAoHAgKJc2VjcDI1NmsxoQOIhz10UYFO65iCNMMmcXHJQmk2FRNrqm0KoNtpBCicpoN1ZHCCIyg"
 NETWORK_ID="84"
 CHAIN_ID="84"
@@ -34,7 +35,8 @@ GENESIS_FILE=""
 EL_RPC_PORT="8545"
 EL_AUTHRPC_PORT="8551"
 CL_HTTP_PORT="3500"
-NODE_INDEX="0"
+VALIDATOR_KEYSTORE=""
+VALIDATOR_PASSWORD_OVERRIDE=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -70,8 +72,12 @@ while [[ $# -gt 0 ]]; do
       CL_HTTP_PORT="$2"
       shift 2
       ;;
-    --node-index)
-      NODE_INDEX="$2"
+    --validator-keystore)
+      VALIDATOR_KEYSTORE="$2"
+      shift 2
+      ;;
+    --validator-password)
+      VALIDATOR_PASSWORD_OVERRIDE="$2"
       shift 2
       ;;
     -h|--help)
@@ -97,7 +103,6 @@ log_info "  EL Bootnode: $EL_BOOTNODE"
 log_info "  CL Bootnodes: ${CL_BOOTNODES:-none}"
 log_info "  Network ID: $NETWORK_ID"
 log_info "  Chain ID: $CHAIN_ID"
-log_info "  Node Index: $NODE_INDEX"
 log_info "=========================================="
 
 # Export network settings
@@ -122,7 +127,9 @@ elif [ -n "$GENESIS_FILE" ] && [ -f "$GENESIS_FILE" ]; then
 else
   # Auto-build genesis file if not provided
   log_info "No genesis file provided - building one automatically..."
-  DEFAULT_GENESIS_FILE="${EL_DIR}/geth/genesis.json"
+  # Use node directory for genesis file
+  ensure_node_directories
+  DEFAULT_GENESIS_FILE="$NODE_GENESIS_FILE"
   
   # Determine network name for build-genesis.sh
   if [ "$CHAIN_ID" = "84" ] && [ "$NETWORK_ID" = "84" ]; then
@@ -144,15 +151,15 @@ fi
 
 # Step 2: Create execution node (geth)
 log_info "Step 2: Creating execution node (geth)..."
-EL_NODE_IP=$(get_next_el_ip $NODE_INDEX)
+# Ensure node directories exist (safe to call multiple times)
+ensure_node_directories
 
-bash "$SCRIPT_DIR/modules/geth/create-node.sh" $NODE_INDEX \
-  --ip "$EL_NODE_IP" \
+bash "$SCRIPT_DIR/modules/geth/create-node.sh" \
   --bootnode "$EL_BOOTNODE" \
   --rpc-port "$EL_RPC_PORT" \
   --authrpc-port "$EL_AUTHRPC_PORT"
 
-log_info "Execution node created at IP: $EL_NODE_IP"
+log_info "Execution node container: geth-node"
 
 # Step 3: Build lighthouse config if needed
 # For mainnet, we might need to use mainnet config
@@ -160,8 +167,8 @@ if [ "$CHAIN_ID" = "1" ] && [ "$NETWORK_ID" = "1" ]; then
   log_info "Step 3: Using mainnet configuration for Lighthouse..."
   # For mainnet, Lighthouse uses built-in mainnet config
   # We just need to ensure config directory exists
-  mkdir -p "$CONFIG_DIR"
-  if [ ! -f "$CONFIG_DIR/config.yaml" ]; then
+  mkdir -p "$NODE_CONFIG_DIR"
+  if [ ! -f "$NODE_CONFIG_DIR/config.yaml" ]; then
     log_warn "config.yaml not found. Lighthouse will use built-in mainnet config."
     log_warn "If you need custom config, run: bash modules/lighthouse/build-config.sh --network eth"
   fi
@@ -171,19 +178,32 @@ else
     --network "${NETWORK:-joc}" \
     --chain-id "$CHAIN_ID" \
     --network-id "$NETWORK_ID" \
-    --output "$CONFIG_DIR/config.yaml"
+    --output "$NODE_CONFIG_DIR/config.yaml"
 fi
 
 # Step 4: Create beacon node (lighthouse)
 log_info "Step 4: Creating beacon node (lighthouse)..."
-CL_NODE_IP=$(get_next_cl_ip $NODE_INDEX)
 
-BEACON_ARGS="$NODE_INDEX --el-ip $EL_NODE_IP --http-port $CL_HTTP_PORT"
+BEACON_ARGS="--el-container geth-node --http-port $CL_HTTP_PORT"
 [ -n "$CL_BOOTNODES" ] && BEACON_ARGS="$BEACON_ARGS --boot-nodes $CL_BOOTNODES"
 
 bash "$SCRIPT_DIR/modules/lighthouse/create-beacon-node.sh" $BEACON_ARGS
 
-log_info "Beacon node created at IP: $CL_NODE_IP"
+log_info "Beacon node container: lighthouse-beacon"
+
+# Step 5: Create validator client if keystore provided
+if [ -n "$VALIDATOR_KEYSTORE" ]; then
+  if [ -z "$VALIDATOR_PASSWORD_OVERRIDE" ]; then
+    log_error "--validator-password is required when --validator-keystore is provided"
+    exit 1
+  fi
+  log_info "Step 5: Creating validator client..."
+  VALIDATOR_ARGS=(--beacon-container lighthouse-beacon --keystore "$VALIDATOR_KEYSTORE" --password "$VALIDATOR_PASSWORD_OVERRIDE")
+  bash "$SCRIPT_DIR/modules/lighthouse/create-validator.sh" "${VALIDATOR_ARGS[@]}"
+  log_info "Validator client container: lighthouse-validator"
+else
+  log_warn "Validator keystore not provided. Skipping validator client creation."
+fi
 
 log_info "=========================================="
 log_info "Connection setup complete!"
@@ -195,8 +215,8 @@ log_info "  Execution Layer Auth RPC: http://localhost:$EL_AUTHRPC_PORT"
 log_info "  Beacon API: http://localhost:$CL_HTTP_PORT"
 log_info ""
 log_info "Useful commands:"
-log_info "  View EL logs: docker logs geth-node-$NODE_INDEX"
-log_info "  View CL logs: docker logs lighthouse-beacon-$NODE_INDEX"
+log_info "  View EL logs: docker logs geth-node"
+log_info "  View CL logs: docker logs lighthouse-beacon"
 log_info "  Check EL sync: curl -X POST -H \"Content-Type: application/json\" --data '{\"jsonrpc\":\"2.0\",\"method\":\"eth_syncing\",\"params\":[],\"id\":1}' http://localhost:$EL_RPC_PORT"
 log_info "  Check CL sync: curl http://localhost:$CL_HTTP_PORT/eth/v1/node/syncing"
 log_info ""

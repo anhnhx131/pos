@@ -16,7 +16,7 @@ async function main() {
 
   const walletClient = createWalletClient({
     account,
-    transport: http("http://localhost:8545"),
+    transport: http("https://3b5cb9a7-6b31-4316-bfa8-151236f39248.ccq1d96vr01gzvjgk3bfwi2cy.dev.bccloud.net:8545/"),
   });
 
   await walletClient.writeContract({
