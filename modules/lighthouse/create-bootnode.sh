@@ -13,6 +13,7 @@ usage() {
   echo ""
   echo "Options:"
   echo "  --name <name>       Container name (default: lighthouse-bootnode)"
+  echo "  --ip <ip>           Bootnode IP address (optional, for ENR)"
   exit 1
 }
 
@@ -47,6 +48,9 @@ log_info "  Name: $BOOTNODE_NAME"
 # Create network if not exists
 create_docker_network
 
+# Ensure config artifacts exist
+ensure_lighthouse_config_files
+
 # Create bootnode data directory
 BOOTNODE_DIR="${CL_DIR}/bootnode"
 mkdir -p "$BOOTNODE_DIR"
@@ -60,20 +64,25 @@ fi
 
 # Run bootnode
 log_info "Starting Lighthouse bootnode..."
-docker run -d \
+DOCKER_CMD="docker run -d \
   --name $BOOTNODE_NAME \
   --network $DOCKER_NETWORK_NAME \
-  -v "$BOOTNODE_DIR:/data" \
-  -v "$CONFIG_DIR:/config" \
+  -v $BOOTNODE_DIR:/data \
+  -v $CONFIG_DIR:/config \
   $LIGHTHOUSE_IMAGE \
   lighthouse \
   boot_node \
-  --listen-address=$BOOTNODE_IP \
-  --enr-address=$BOOTNODE_IP \
   --datadir=/data \
   --testnet-dir=/config \
   --disable-packet-filter \
-  --enable-enr-auto-update
+  --enable-enr-auto-update"
+
+# Add IP addresses if specified
+if [ -n "$BOOTNODE_IP" ]; then
+  DOCKER_CMD="$DOCKER_CMD --enr-address=$BOOTNODE_IP"
+fi
+
+eval $DOCKER_CMD
 
 log_info "Lighthouse bootnode started successfully!"
 

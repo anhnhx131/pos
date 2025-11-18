@@ -97,6 +97,9 @@ log_info "  Fee Recipient: $FEE_RECIPIENT"
 # Create network if not exists
 create_docker_network
 
+# Ensure config artifacts exist
+ensure_lighthouse_config_files
+
 # Create validator data directory
 VALIDATOR_DIR="${CL_DIR}/validator"
 mkdir -p "$VALIDATOR_DIR/validators"

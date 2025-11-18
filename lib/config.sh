@@ -22,6 +22,7 @@ export GETH_BOOTNODE_ENODE="${GETH_BOOTNODE_ENODE:-enode://0c284ba5ce93c5879aa2f
 export LIGHTHOUSE_IMAGE="${LIGHTHOUSE_IMAGE:-sigp/lighthouse:v7.0.1}"
 export VALIDATOR_PASSWORD="${VALIDATOR_PASSWORD:-password123456}"
 export VALIDATOR_API_TOKEN="${VALIDATOR_API_TOKEN:-R6YhbDO6gKjNMydtZHcaCovFbQ0izq5Hk}"
+export DEPOSIT_CONTRACT_BLOCK="${DEPOSIT_CONTRACT_BLOCK:-0}"
 
 # Lighthouse Bootnodes
 export LIGHTHOUSE_BOOTNODE_0_IP="${LIGHTHOUSE_BOOTNODE_0_IP:-10.7.2.2}"
@@ -105,6 +106,20 @@ function build_lighthouse_config() {
     --network "$network" \
     --output "$output" \
     "$@"
+}
+
+function ensure_lighthouse_config_files() {
+  mkdir -p "$CONFIG_DIR"
+  local config_file="$CONFIG_DIR/config.yaml"
+  local deposit_block_file="$CONFIG_DIR/deposit_contract_block.txt"
+  if [ ! -f "$config_file" ]; then
+    log_info "config.yaml missing. Building default lighthouse config..."
+    build_lighthouse_config "$NETWORK" "$config_file"
+  fi
+  if [ ! -f "$deposit_block_file" ]; then
+    echo "$DEPOSIT_CONTRACT_BLOCK" > "$deposit_block_file"
+    log_info "Created default deposit_contract_block.txt ($DEPOSIT_CONTRACT_BLOCK)"
+  fi
 }
 
 function build_geth_genesis() {

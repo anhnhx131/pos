@@ -84,6 +84,9 @@ log_info "  EL Endpoint: $EL_ENDPOINT"
 # Create network if not exists
 create_docker_network
 
+# Ensure config artifacts exist
+ensure_lighthouse_config_files
+
 # Create beacon node data directory
 BEACON_DIR="${CL_DIR}/beacon"
 mkdir -p "$BEACON_DIR"
