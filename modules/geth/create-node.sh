@@ -9,11 +9,10 @@ source "$ROOT_DIR/lib/config.sh"
 
 # Parse arguments
 usage() {
-  echo "Usage: $0 <node_index> [options]"
+  echo "Usage: $0 [options]"
   echo ""
   echo "Options:"
-  echo "  --ip <ip>                 Node IP address (default: auto-assign based on index)"
-  echo "  --name <name>             Container name (default: geth-node-<index>)"
+  echo "  --name <name>             Container name (default: geth-node)"
   echo "  --private-key <key>       Private key for mining/account"
   echo "  --public-key <key>        Public key/address for mining"
   echo "  --bootnode <enode>        Bootnode enode URL (default: from config)"
@@ -24,8 +23,6 @@ usage() {
 }
 
 # Defaults
-NODE_INDEX=""
-NODE_IP=""
 NODE_NAME=""
 PRIVATE_KEY=""
 PUBLIC_KEY=""
@@ -37,10 +34,6 @@ AUTHRPC_PORT=""
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --ip)
-      NODE_IP="$2"
-      shift 2
-      ;;
     --name)
       NODE_NAME="$2"
       shift 2
@@ -73,31 +66,17 @@ while [[ $# -gt 0 ]]; do
       usage
       ;;
     *)
-      if [ -z "$NODE_INDEX" ]; then
-        NODE_INDEX="$1"
-      else
-        echo "Unknown option: $1"
-        usage
-      fi
-      shift
+      echo "Unknown option: $1"
+      usage
       ;;
   esac
 done
 
-# Validate required arguments
-if [ -z "$NODE_INDEX" ]; then
-  log_error "Node index is required"
-  usage
-fi
-
-# Set defaults based on node index
-[ -z "$NODE_IP" ] && NODE_IP=$(get_next_el_ip $NODE_INDEX)
-[ -z "$NODE_NAME" ] && NODE_NAME="geth-node-${NODE_INDEX}"
+# Set defaults
+[ -z "$NODE_NAME" ] && NODE_NAME="geth-node"
 
 log_info "Creating Geth Node"
-log_info "  Index: $NODE_INDEX"
 log_info "  Name: $NODE_NAME"
-log_info "  IP: $NODE_IP"
 log_info "  Mining: $ENABLE_MINING"
 
 # Create network if not exists
@@ -143,7 +122,7 @@ if docker ps -a --format '{{.Names}}' | grep -q "^${NODE_NAME}$"; then
 fi
 
 # Build docker run command
-DOCKER_CMD="docker run -d --name $NODE_NAME --network $DOCKER_NETWORK_NAME --ip $NODE_IP"
+DOCKER_CMD="docker run -d --name $NODE_NAME --network $DOCKER_NETWORK_NAME"
 
 # Add port mappings if specified
 [ -n "$RPC_PORT" ] && DOCKER_CMD="$DOCKER_CMD -p ${RPC_PORT}:8545"
@@ -156,7 +135,6 @@ DOCKER_CMD="$DOCKER_CMD -v $NODE_DIR:/.ethereum"
 DOCKER_CMD="$DOCKER_CMD $GETH_IMAGE"
 DOCKER_CMD="$DOCKER_CMD --datadir=/.ethereum"
 DOCKER_CMD="$DOCKER_CMD --networkid=$NETWORK_ID"
-DOCKER_CMD="$DOCKER_CMD --nat=extip:$NODE_IP"
 DOCKER_CMD="$DOCKER_CMD --http"
 DOCKER_CMD="$DOCKER_CMD --http.addr=0.0.0.0"
 DOCKER_CMD="$DOCKER_CMD --http.api=eth,net,web3,debug,trace,engine,admin"
@@ -187,9 +165,9 @@ eval $DOCKER_CMD
 
 log_info "Geth node started successfully!"
 log_info "Container: $NODE_NAME"
-log_info "IP: $NODE_IP"
 [ -n "$RPC_PORT" ] && log_info "RPC: http://localhost:${RPC_PORT}"
 [ -n "$AUTHRPC_PORT" ] && log_info "Auth RPC: http://localhost:${AUTHRPC_PORT}"
+log_info "Internal Auth RPC: http://${NODE_NAME}:8551"
 
 log_info "Done!"
 

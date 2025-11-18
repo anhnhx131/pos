@@ -9,13 +9,12 @@ source "$ROOT_DIR/lib/config.sh"
 
 # Parse arguments
 usage() {
-  echo "Usage: $0 <validator_index> [options]"
+  echo "Usage: $0 [options]"
   echo ""
   echo "Options:"
-  echo "  --ip <ip>                 Validator IP (default: auto-assign)"
-  echo "  --name <name>             Container name (default: lighthouse-validator-<index>)"
+  echo "  --name <name>             Container name (default: lighthouse-validator)"
   echo "  --beacon-endpoint <url>   Beacon node endpoint (required)"
-  echo "  --beacon-ip <ip>          Beacon node IP (alternative to --beacon-endpoint)"
+  echo "  --beacon-container <name> Beacon node container name (alternative to --beacon-endpoint)"
   echo "  --keystore <json>         Validator keystore JSON"
   echo "  --keystore-file <path>    Path to validator keystore file"
   echo "  --password <pass>         Keystore password (default: from config)"
@@ -24,11 +23,9 @@ usage() {
   exit 1
 }
 
-VALIDATOR_INDEX=""
-VALIDATOR_IP=""
 VALIDATOR_NAME=""
 BEACON_ENDPOINT=""
-BEACON_IP=""
+BEACON_CONTAINER=""
 KEYSTORE=""
 KEYSTORE_FILE=""
 PASSWORD="$VALIDATOR_PASSWORD"
@@ -37,10 +34,6 @@ HTTP_PORT=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --ip)
-      VALIDATOR_IP="$2"
-      shift 2
-      ;;
     --name)
       VALIDATOR_NAME="$2"
       shift 2
@@ -49,8 +42,8 @@ while [[ $# -gt 0 ]]; do
       BEACON_ENDPOINT="$2"
       shift 2
       ;;
-    --beacon-ip)
-      BEACON_IP="$2"
+    --beacon-container)
+      BEACON_CONTAINER="$2"
       shift 2
       ;;
     --keystore)
@@ -77,40 +70,27 @@ while [[ $# -gt 0 ]]; do
       usage
       ;;
     *)
-      if [ -z "$VALIDATOR_INDEX" ]; then
-        VALIDATOR_INDEX="$1"
-      else
-        echo "Unknown option: $1"
-        usage
-      fi
-      shift
+      echo "Unknown option: $1"
+      usage
       ;;
   esac
 done
 
-if [ -z "$VALIDATOR_INDEX" ]; then
-  log_error "Validator index is required"
-  usage
-fi
-
 # Set defaults
-[ -z "$VALIDATOR_IP" ] && VALIDATOR_IP=$(get_next_validator_ip $VALIDATOR_INDEX)
-[ -z "$VALIDATOR_NAME" ] && VALIDATOR_NAME="lighthouse-validator-${VALIDATOR_INDEX}"
+[ -z "$VALIDATOR_NAME" ] && VALIDATOR_NAME="lighthouse-validator"
 
 # Determine beacon endpoint
 if [ -z "$BEACON_ENDPOINT" ]; then
-  if [ -n "$BEACON_IP" ]; then
-    BEACON_ENDPOINT="http://${BEACON_IP}:3500"
+  if [ -n "$BEACON_CONTAINER" ]; then
+    BEACON_ENDPOINT="http://${BEACON_CONTAINER}:3500"
   else
-    log_error "Either --beacon-endpoint or --beacon-ip must be specified"
+    log_error "Either --beacon-endpoint or --beacon-container must be specified"
     usage
   fi
 fi
 
 log_info "Creating Lighthouse Validator"
-log_info "  Index: $VALIDATOR_INDEX"
 log_info "  Name: $VALIDATOR_NAME"
-log_info "  IP: $VALIDATOR_IP"
 log_info "  Beacon: $BEACON_ENDPOINT"
 log_info "  Fee Recipient: $FEE_RECIPIENT"
 
@@ -118,7 +98,7 @@ log_info "  Fee Recipient: $FEE_RECIPIENT"
 create_docker_network
 
 # Create validator data directory
-VALIDATOR_DIR="${CL_DIR}/validator-${VALIDATOR_INDEX}"
+VALIDATOR_DIR="${CL_DIR}/validator"
 mkdir -p "$VALIDATOR_DIR/validators"
 mkdir -p "$VALIDATOR_DIR/validator_keys"
 
@@ -165,7 +145,7 @@ if docker ps -a --format '{{.Names}}' | grep -q "^${VALIDATOR_NAME}$"; then
 fi
 
 # Build docker command
-DOCKER_CMD="docker run -d --name $VALIDATOR_NAME --network $DOCKER_NETWORK_NAME --ip $VALIDATOR_IP"
+DOCKER_CMD="docker run -d --name $VALIDATOR_NAME --network $DOCKER_NETWORK_NAME"
 
 # Add port mapping if specified
 [ -n "$HTTP_PORT" ] && DOCKER_CMD="$DOCKER_CMD -p ${HTTP_PORT}:5062"
@@ -191,8 +171,8 @@ eval $DOCKER_CMD
 
 log_info "Lighthouse validator started successfully!"
 log_info "Container: $VALIDATOR_NAME"
-log_info "IP: $VALIDATOR_IP"
 [ -n "$HTTP_PORT" ] && log_info "HTTP API: http://localhost:${HTTP_PORT}"
+log_info "Internal HTTP API: http://${VALIDATOR_NAME}:5062"
 log_info "API Token: $VALIDATOR_API_TOKEN"
 
 log_info "Done!"

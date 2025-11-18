@@ -9,34 +9,27 @@ source "$ROOT_DIR/lib/config.sh"
 
 # Parse arguments
 usage() {
-  echo "Usage: $0 <node_index> [options]"
+  echo "Usage: $0 [options]"
   echo ""
   echo "Options:"
-  echo "  --ip <ip>                 Beacon node IP (default: auto-assign)"
-  echo "  --name <name>             Container name (default: lighthouse-beacon-<index>)"
+  echo "  --name <name>             Container name (default: lighthouse-beacon)"
   echo "  --el-endpoint <url>       Execution layer endpoint (required)"
-  echo "  --el-ip <ip>              Execution layer IP (alternative to --el-endpoint)"
+  echo "  --el-container <name>     Execution layer container name (alternative to --el-endpoint)"
   echo "  --boot-nodes <enr,enr>    Comma-separated list of boot node ENRs"
   echo "  --http-port <port>        Expose HTTP port on host"
   echo "  --enable-gui              Enable Lighthouse GUI"
   exit 1
 }
 
-NODE_INDEX=""
-NODE_IP=""
 NODE_NAME=""
 EL_ENDPOINT=""
-EL_IP=""
+EL_CONTAINER=""
 BOOT_NODES="$LIGHTHOUSE_BOOTNODES"
 HTTP_PORT=""
 ENABLE_GUI=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --ip)
-      NODE_IP="$2"
-      shift 2
-      ;;
     --name)
       NODE_NAME="$2"
       shift 2
@@ -45,8 +38,8 @@ while [[ $# -gt 0 ]]; do
       EL_ENDPOINT="$2"
       shift 2
       ;;
-    --el-ip)
-      EL_IP="$2"
+    --el-container)
+      EL_CONTAINER="$2"
       shift 2
       ;;
     --boot-nodes)
@@ -65,47 +58,34 @@ while [[ $# -gt 0 ]]; do
       usage
       ;;
     *)
-      if [ -z "$NODE_INDEX" ]; then
-        NODE_INDEX="$1"
-      else
-        echo "Unknown option: $1"
-        usage
-      fi
-      shift
+      echo "Unknown option: $1"
+      usage
       ;;
   esac
 done
 
-if [ -z "$NODE_INDEX" ]; then
-  log_error "Node index is required"
-  usage
-fi
-
 # Set defaults
-[ -z "$NODE_IP" ] && NODE_IP=$(get_next_cl_ip $NODE_INDEX)
-[ -z "$NODE_NAME" ] && NODE_NAME="lighthouse-beacon-${NODE_INDEX}"
+[ -z "$NODE_NAME" ] && NODE_NAME="lighthouse-beacon"
 
 # Determine EL endpoint
 if [ -z "$EL_ENDPOINT" ]; then
-  if [ -n "$EL_IP" ]; then
-    EL_ENDPOINT="http://${EL_IP}:8551"
+  if [ -n "$EL_CONTAINER" ]; then
+    EL_ENDPOINT="http://${EL_CONTAINER}:8551"
   else
-    log_error "Either --el-endpoint or --el-ip must be specified"
+    log_error "Either --el-endpoint or --el-container must be specified"
     usage
   fi
 fi
 
 log_info "Creating Lighthouse Beacon Node"
-log_info "  Index: $NODE_INDEX"
 log_info "  Name: $NODE_NAME"
-log_info "  IP: $NODE_IP"
 log_info "  EL Endpoint: $EL_ENDPOINT"
 
 # Create network if not exists
 create_docker_network
 
 # Create beacon node data directory
-BEACON_DIR="${CL_DIR}/beacon-${NODE_INDEX}"
+BEACON_DIR="${CL_DIR}/beacon"
 mkdir -p "$BEACON_DIR"
 
 # Stop and remove existing node if running
@@ -116,7 +96,7 @@ if docker ps -a --format '{{.Names}}' | grep -q "^${NODE_NAME}$"; then
 fi
 
 # Build docker command
-DOCKER_CMD="docker run -d --name $NODE_NAME --network $DOCKER_NETWORK_NAME --ip $NODE_IP"
+DOCKER_CMD="docker run -d --name $NODE_NAME --network $DOCKER_NETWORK_NAME"
 
 # Add port mapping if specified
 [ -n "$HTTP_PORT" ] && DOCKER_CMD="$DOCKER_CMD -p ${HTTP_PORT}:3500"
@@ -137,8 +117,6 @@ DOCKER_CMD="$DOCKER_CMD --execution-endpoint=$EL_ENDPOINT"
 DOCKER_CMD="$DOCKER_CMD --execution-jwt=/config/jwtsecret"
 DOCKER_CMD="$DOCKER_CMD --testnet-dir=/config"
 DOCKER_CMD="$DOCKER_CMD --disable-upnp"
-DOCKER_CMD="$DOCKER_CMD --enr-address=$NODE_IP"
-DOCKER_CMD="$DOCKER_CMD --listen-address=$NODE_IP"
 DOCKER_CMD="$DOCKER_CMD --enr-tcp-port=9000"
 DOCKER_CMD="$DOCKER_CMD --enr-udp-port=9000"
 DOCKER_CMD="$DOCKER_CMD --enable-private-discovery"
@@ -155,8 +133,8 @@ eval $DOCKER_CMD
 
 log_info "Lighthouse beacon node started successfully!"
 log_info "Container: $NODE_NAME"
-log_info "IP: $NODE_IP"
 [ -n "$HTTP_PORT" ] && log_info "HTTP API: http://localhost:${HTTP_PORT}"
+log_info "Internal HTTP API: http://${NODE_NAME}:3500"
 
 log_info "Done!"
 
