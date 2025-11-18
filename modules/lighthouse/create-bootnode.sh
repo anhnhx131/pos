@@ -69,6 +69,8 @@ DOCKER_CMD="docker run -d \
   --network $DOCKER_NETWORK_NAME \
   -v $BOOTNODE_DIR:/data \
   -v $CONFIG_DIR:/config \
+  -p 9000:9000/tcp \
+  -p 9000:9000/udp \
   $LIGHTHOUSE_IMAGE \
   lighthouse \
   boot_node \
