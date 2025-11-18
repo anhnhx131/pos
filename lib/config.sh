@@ -28,7 +28,20 @@ export LIGHTHOUSE_BOOTNODE_1_IP="${LIGHTHOUSE_BOOTNODE_1_IP:-10.7.2.3}"
 export LIGHTHOUSE_BOOTNODES="${LIGHTHOUSE_BOOTNODES:enr:-IS4QDLOcskBCX3ZB3yhwlPvk2Q1XigdgzLoW3sn1JITswuhLjdMfdzTL4WqoU293vlrNcEGMqlV2ASvxl8DkoKgm88BgmlkgnY0gmlwhIhuXPGJc2VjcDI1NmsxoQPuYifGXE8PjOLLmnb5HkUxVmpNN6wc7WGjDooacKOXf4N1ZHCCIyg}"
 
 # Paths
-export ROOT_DIR="${ROOT_DIR:-$(pwd)}"
+# ROOT_DIR should be set by calling script before sourcing this file
+# If not set, try to detect from common locations (for backward compatibility)
+if [ -z "$ROOT_DIR" ]; then
+  # Try to find root by looking for lib/config.sh
+  SCRIPT_SOURCE="${BASH_SOURCE[0]}"
+  if [ -n "$SCRIPT_SOURCE" ] && [ -f "$SCRIPT_SOURCE" ]; then
+    CONFIG_LIB_DIR="$(cd "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+    if [ -d "$CONFIG_LIB_DIR/../modules" ]; then
+      export ROOT_DIR="$(cd "$CONFIG_LIB_DIR/.." && pwd)"
+    fi
+  fi
+  # Last resort: use pwd (may be wrong when running with sudo)
+  export ROOT_DIR="${ROOT_DIR:-$(pwd)}"
+fi
 export EL_DIR="${ROOT_DIR}/el"
 export CL_DIR="${ROOT_DIR}/cl"
 export CONFIG_DIR="${CL_DIR}/config"

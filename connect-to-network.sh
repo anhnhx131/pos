@@ -5,6 +5,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Set ROOT_DIR before sourcing config.sh to ensure correct paths when running with sudo
+export ROOT_DIR="${ROOT_DIR:-$SCRIPT_DIR}"
 source "$SCRIPT_DIR/lib/config.sh"
 
 # Parse arguments
