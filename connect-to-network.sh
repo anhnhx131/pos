@@ -200,7 +200,45 @@ if [ -n "$VALIDATOR_KEYSTORE" ]; then
     exit 1
   fi
   log_info "Step 5: Creating validator client..."
-  VALIDATOR_ARGS=(--beacon-container lighthouse-beacon --keystore "$VALIDATOR_KEYSTORE" --password "$VALIDATOR_PASSWORD_OVERRIDE")
+  
+  # Decode base64 keystore if it looks like base64 (contains only base64 chars and no JSON structure)
+  DECODED_KEYSTORE="$VALIDATOR_KEYSTORE"
+  if ! echo "$VALIDATOR_KEYSTORE" | grep -q '^{'; then
+    # Doesn't start with {, likely base64 encoded
+    log_info "Detected base64 encoded keystore, decoding..."
+    DECODED_KEYSTORE=$(echo "$VALIDATOR_KEYSTORE" | base64 -d 2>/dev/null || echo "$VALIDATOR_KEYSTORE")
+    if ! echo "$DECODED_KEYSTORE" | grep -q '^{'; then
+      log_warn "Failed to decode base64 keystore, using as-is"
+      DECODED_KEYSTORE="$VALIDATOR_KEYSTORE"
+    fi
+  fi
+  
+  # Parse keystore JSON to extract path and create filename
+  # Format: keystore-m_12381_3600_0_0_0-{timestamp}.json
+  KEYSTORE_PATH=""
+  if command -v jq >/dev/null 2>&1; then
+    KEYSTORE_PATH=$(echo "$DECODED_KEYSTORE" | jq -r '.path // "m/12381/3600/0/0/0"' 2>/dev/null || echo "m/12381/3600/0/0/0")
+  else
+    # Fallback: try to extract path using grep/sed
+    KEYSTORE_PATH=$(echo "$DECODED_KEYSTORE" | grep -o '"path"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' || echo "m/12381/3600/0/0/0")
+  fi
+  
+  # Replace / with _ in path for filename
+  KEYSTORE_PATH=$(echo "$KEYSTORE_PATH" | sed 's/\//_/g')
+  
+  # Generate timestamp
+  TIMESTAMP=$(date +%s)
+  
+  # Create keystore directory and save file
+  KEYSTORE_DIR="${NODE_DIR}/keystore"
+  mkdir -p "$KEYSTORE_DIR"
+  KEYSTORE_FILENAME="keystore-${KEYSTORE_PATH}-${TIMESTAMP}.json"
+  KEYSTORE_FILE="${KEYSTORE_DIR}/${KEYSTORE_FILENAME}"
+  
+  echo "$DECODED_KEYSTORE" > "$KEYSTORE_FILE"
+  log_info "Saved keystore to: $KEYSTORE_FILE"
+  
+  VALIDATOR_ARGS=(--beacon-container lighthouse-beacon --keystore-file "$KEYSTORE_FILE" --password "$VALIDATOR_PASSWORD_OVERRIDE")
   bash "$SCRIPT_DIR/modules/lighthouse/create-validator.sh" "${VALIDATOR_ARGS[@]}"
   log_info "Validator client container: lighthouse-validator"
 else
