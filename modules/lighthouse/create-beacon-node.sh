@@ -47,6 +47,10 @@ while [[ $# -gt 0 ]]; do
       BOOT_NODES="$2"
       shift 2
       ;;
+    --node-ip)
+      NODE_IP="$2"
+      shift 2
+      ;;
     --http-port)
       HTTP_PORT="$2"
       shift 2
@@ -124,6 +128,11 @@ DOCKER_CMD="$DOCKER_CMD --disable-upnp"
 DOCKER_CMD="$DOCKER_CMD --enr-tcp-port=9000"
 DOCKER_CMD="$DOCKER_CMD --enr-udp-port=9000"
 DOCKER_CMD="$DOCKER_CMD --enable-private-discovery"
+
+# add node ip
+if [ -n "$NODE_IP" ]; then
+  DOCKER_CMD="$DOCKER_CMD --enr-address=$NODE_IP"
+fi
 
 # Add boot nodes if specified
 [ -n "$BOOT_NODES" ] && DOCKER_CMD="$DOCKER_CMD --boot-nodes=$BOOT_NODES"
