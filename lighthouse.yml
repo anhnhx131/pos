@@ -76,6 +76,8 @@ services:
       - "8008"
       - --suggested-fee-recipient
       - ${FEE_RECIPIENT}
+      - --enr-address
+      - ${NODE_IP}
     labels:
       - metrics.scrape=true
       - metrics.path=/metrics
