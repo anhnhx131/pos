@@ -4,3 +4,4 @@ interact-eth1/*
 test/*
 node/*
 bootnode/*
+deposit.sh

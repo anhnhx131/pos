@@ -1,5 +1,0 @@
-{
-  "dependencies": {
-    "ssh2-promise": "^1.0.3"
-  }
-}

@@ -1,0 +1,220 @@
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100m
+      max-file: "3"
+      tag: '{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}'
+
+services:
+  consensus:
+    restart: "unless-stopped"
+    image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
+    pull_policy: never
+    user: lhconsensus
+    stop_grace_period: 1m
+    volumes:
+      - ${LH_CONSENSUS_DATA_DIR:-./data/cl/consensus}:/var/lib/lighthouse
+      - ${LH_CONFIG_DIR:-./config/lighthouse}:${CL_TESTNET_DIR:-/config}:ro
+      - ${JWT_SECRET_DIR:-./shared/jwt}:/var/lib/lighthouse/beacon/ee-secret
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - CHECKPOINT_SYNC_URL=${CHECKPOINT_SYNC_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - MEV_BOOST=${MEV_BOOST}
+      - MEV_NODE=${MEV_NODE}
+      - BEACON_STATS_API=${BEACON_STATS_API}
+      - BEACON_STATS_MACHINE=${BEACON_STATS_MACHINE}
+      - CL_EXTRAS=${CL_EXTRAS:-}
+      - ARCHIVE_NODE=${CL_ARCHIVE_NODE:-false}
+      - CL_TESTNET_DIR=${CL_TESTNET_DIR:-/config}
+      - IPV6=${IPV6:-false}
+      - CL_P2P_PORT=${CL_P2P_PORT:-9000}
+      - CL_QUIC_PORT=${CL_QUIC_PORT:-9001}
+      - NETWORK=${NETWORK}
+    ports:
+      - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/tcp
+      - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/udp
+      - ${HOST_IP:-}:${CL_QUIC_PORT:-9001}:${CL_QUIC_PORT:-9001}/udp
+    networks:
+      default:
+        aliases:
+          - eth2
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${CL_ALIAS:-default-consensus}
+    <<: *logging
+    entrypoint:
+      - docker-entrypoint.sh
+      - lighthouse
+      - bn
+      - --disable-upnp
+      - --datadir
+      - /var/lib/lighthouse
+      - --gui
+      - --http-address
+      - 0.0.0.0
+      - --http-port
+      - ${CL_REST_PORT:-5052}
+      - --http-allow-origin=*
+      - --listen-address
+      - 0.0.0.0
+      - --port
+      - ${CL_P2P_PORT:-9000}
+      - --quic-port
+      - ${CL_QUIC_PORT:-9001}
+      - --target-peers
+      - ${CL_MAX_PEER_COUNT:-100}
+      - --execution-endpoint
+      - ${EL_NODE}
+      - --execution-jwt
+      - /var/lib/lighthouse/beacon/ee-secret/jwtsecret
+      - --debug-level=${LOG_LEVEL}
+      - --metrics
+      - --metrics-address
+      - 0.0.0.0
+      - --metrics-port
+      - "8008"
+      - --suggested-fee-recipient
+      - ${FEE_RECIPIENT}
+    labels:
+      - metrics.scrape=true
+      - metrics.path=/metrics
+      - metrics.port=8008
+      - metrics.instance=consensus
+      - metrics.network=${NETWORK}
+
+  validator:
+    restart: "unless-stopped"
+    image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
+    pull_policy: never
+    user: lhvalidator
+    environment:
+      - MEV_BOOST=${MEV_BOOST}
+      - MEV_BUILD_FACTOR=${MEV_BUILD_FACTOR}
+      - BEACON_STATS_API=${BEACON_STATS_API}
+      - BEACON_STATS_MACHINE=${BEACON_STATS_MACHINE}
+      - DOPPELGANGER=${DOPPELGANGER}
+      - VC_EXTRAS=${VC_EXTRAS:-}
+      - GRAFFITI=${GRAFFITI:-}
+      - DEFAULT_GRAFFITI=${DEFAULT_GRAFFITI:-false}
+      - NETWORK=${NETWORK}
+      - ENABLE_DIST_ATTESTATION_AGGR=${ENABLE_DIST_ATTESTATION_AGGR:-false}
+      - CL_TESTNET_DIR=${CL_TESTNET_DIR:-/config}
+    volumes:
+      - ${VALIDATOR_DATA_DIR:-./data/cl/validator}:/var/lib/lighthouse
+      - ${LH_CONFIG_DIR:-./config/lighthouse}:${CL_TESTNET_DIR:-/config}:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      default:
+        aliases:
+          - ${VC_ALIAS:-vc}
+    <<: *logging
+    entrypoint:
+      - docker-entrypoint-vc.sh
+      - lighthouse
+      - vc
+      - --datadir
+      - /var/lib/lighthouse
+      - --beacon-nodes
+      - ${CL_NODE:-http://consensus:5052}
+      - --broadcast
+      - attestations,sync-committee,blocks,subscriptions
+      - --debug-level=${LOG_LEVEL}
+      - --metrics
+      - --metrics-address
+      - 0.0.0.0
+      - --metrics-port
+      - "8009"
+      - --http
+      - --http-port
+      - ${KEY_API_PORT:-7500}
+      - --http-address
+      - 0.0.0.0
+      - --http-allow-origin=*
+      - --unencrypted-http-transport
+      - --suggested-fee-recipient
+      - ${FEE_RECIPIENT}
+    depends_on:
+      consensus:
+        condition: service_started
+      validator-import:
+        condition: service_completed_successfully
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${VC_HOST:-vc}.service=${VC_HOST:-vc}
+      - traefik.http.routers.${VC_HOST:-vc}.entrypoints=websecure
+      - traefik.http.routers.${VC_HOST:-vc}.rule=Host(`${VC_HOST:-vc}.${DOMAIN}`)
+      - traefik.http.routers.${VC_HOST:-vc}.tls.certresolver=letsencrypt
+      - traefik.http.services.${VC_HOST:-vc}.loadbalancer.server.port=${KEY_API_PORT:-7500}
+      - metrics.scrape=true
+      - metrics.path=/metrics
+      - metrics.port=8009
+      - metrics.instance=validator
+      - metrics.network=${NETWORK}
+
+  validator-import:
+    restart: "no"
+    image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
+    pull_policy: never
+    user: lhvalidator
+    volumes:
+      - ${VALIDATOR_DATA_DIR:-./data/cl/validator}:/var/lib/lighthouse
+      - ${LH_CONFIG_DIR:-./config/lighthouse}:${CL_TESTNET_DIR:-/config}:ro
+    <<: *logging
+    environment:
+      - NETWORK=${NETWORK}
+      - CL_TESTNET_DIR=${CL_TESTNET_DIR:-/config}
+    entrypoint:
+      - lighthouse
+      - account_manager
+      - validator
+      - import
+      - --datadir=/var/lib/lighthouse
+      - --directory=/var/lib/lighthouse/validator_keys
+      - --password-file=/var/lib/lighthouse/validator_keys/${VALIDATOR_PASSWORD_FILENAME:-password.txt}
+      - --testnet-dir=${CL_TESTNET_DIR:-/config}
+      - --reuse-password
+
+  validator-keys:
+    profiles: ["tools"]
+    restart: "no"
+    build:
+      context: ./vc-utils
+    image: vc-utils:local
+    pull_policy: never
+    # The API token has 640 permissions. Root copies it,
+    # then switches to the local user's UID or if not provided,
+    # 1000. The UID has to be able to write .eth/validator_keys
+    # for the "keys delete" command.
+    user: root
+    volumes:
+      - ${VALIDATOR_DATA_DIR:-./data/cl/validator}:/var/lib/lighthouse
+      - ./.eth/validator_keys:/validator_keys
+      - ./.eth/exit_messages:/exit_messages
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - KEYSTORE_PASSWORD=${KEYSTORE_PASSWORD:-}
+      - KEY_API_PORT=${KEY_API_PORT:-7500}
+      - WEB3SIGNER=${WEB3SIGNER:-false}
+      - W3S_NODE=${W3S_NODE}
+      - CL_NODE=${CL_NODE}
+    depends_on:
+      - validator
+    entrypoint:
+      - keymanager.sh
+      - /var/lib/lighthouse/validators/api-token.txt
+      - ${VC_ALIAS:-vc}
+
+  set-cl-prune-marker:
+    profiles: ["tools"]
+    image: alpine:3
+    user: "10002:10002"
+    restart: "no"
+    volumes:
+      - lhconsensus-data:/var/lib/lighthouse
+    entrypoint: ["/bin/sh", "-c"]
+    command: /bin/sh
+
+networks:
+  default:
+    enable_ipv6: ${IPV6:-false}
