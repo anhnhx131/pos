@@ -158,7 +158,7 @@ services:
     restart: "no"
     image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
     pull_policy: never
-    user: lhvalidator
+    user: root
     volumes:
       - ${VALIDATOR_DATA_DIR:-./data/cl/validator}:/var/lib/lighthouse
       - ${LH_CONFIG_DIR:-./config/lighthouse}:${CL_TESTNET_DIR:-/config}:ro
