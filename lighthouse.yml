@@ -31,6 +31,7 @@ services:
       - CL_P2P_PORT=${CL_P2P_PORT:-9000}
       - CL_QUIC_PORT=${CL_QUIC_PORT:-9001}
       - NETWORK=${NETWORK}
+      - CL_BOOTNODE_ENR=${CL_BOOTNODE_ENR}
     ports:
       - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/tcp
       - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/udp
@@ -79,6 +80,8 @@ services:
       - ${FEE_RECIPIENT}
       - --enr-address
       - ${NODE_IP}
+      - --boot-nodes
+      - ${CL_BOOTNODE_ENR}
     labels:
       - metrics.scrape=true
       - metrics.path=/metrics
