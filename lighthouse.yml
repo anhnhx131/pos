@@ -10,7 +10,7 @@ services:
   consensus:
     restart: "unless-stopped"
     image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
-    pull_policy: never
+    pull_policy: if_not_present
     stop_grace_period: 1m
     volumes:
       - ${LH_CONSENSUS_DATA_DIR:-./data/cl/consensus}:/var/lib/lighthouse
@@ -92,7 +92,7 @@ services:
   validator:
     restart: "unless-stopped"
     image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
-    pull_policy: never
+    pull_policy: if_not_present
     environment:
       - MEV_BOOST=${MEV_BOOST}
       - MEV_BUILD_FACTOR=${MEV_BUILD_FACTOR}
@@ -160,7 +160,7 @@ services:
   validator-import:
     restart: "no"
     image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
-    pull_policy: never
+    pull_policy: if_not_present
     volumes:
       - ${VALIDATOR_DATA_DIR:-./data/cl/validator}:/var/lib/lighthouse
       - ${LH_CONFIG_DIR:-./config/lighthouse}:${CL_TESTNET_DIR:-/config}:ro
@@ -185,7 +185,7 @@ services:
     build:
       context: ./vc-utils
     image: vc-utils:local
-    pull_policy: never
+    pull_policy: if_not_present
     # The API token has 640 permissions. Root copies it,
     # then switches to the local user's UID or if not provided,
     # 1000. The UID has to be able to write .eth/validator_keys
