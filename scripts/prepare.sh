@@ -70,23 +70,7 @@ render_execution_genesis_from_env() {
     },
     "londonBlock": ${EL_LONDON_BLOCK:-0},
     "muirGlacierBlock": ${EL_MUIR_GLACIER_BLOCK:-0},
-    "berlinBlock": ${EL_BERLIN_BLOCK:-0},
-    "terminalTotalDifficulty": ${EL_TERMINAL_TOTAL_DIFFICULTY:-18446744073709551615},
-    "shanghaiTime": ${EL_SHANGHAI_TIME:-9999999999999},
-    "cancunTime": ${EL_CANCUN_TIME:-9999999999999},
-    "pragueTime": ${EL_PRAGUE_TIME:-9999999999999},
-    "blobSchedule": {
-      "cancun": {
-        "target": ${EL_BLOB_CANCUN_TARGET:-3},
-        "max": ${EL_BLOB_CANCUN_MAX:-6},
-        "baseFeeUpdateFraction": ${EL_BLOB_CANCUN_BASE_FEE_UPDATE_FRACTION:-3338477}
-      },
-      "prague": {
-        "target": ${EL_BLOB_PRAGUE_TARGET:-3},
-        "max": ${EL_BLOB_PRAGUE_MAX:-6},
-        "baseFeeUpdateFraction": ${EL_BLOB_PRAGUE_BASE_FEE_UPDATE_FRACTION:-3338477}
-      }
-    }
+    "berlinBlock": ${EL_BERLIN_BLOCK:-0}
   },
   "nonce": "${EL_NONCE:-0x0}",
   "timestamp": "${EL_TIMESTAMP:-0x5bfbe6b5}",

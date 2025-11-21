@@ -11,7 +11,6 @@ services:
     restart: "unless-stopped"
     image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
     pull_policy: never
-    user: lhconsensus
     stop_grace_period: 1m
     volumes:
       - ${LH_CONSENSUS_DATA_DIR:-./data/cl/consensus}:/var/lib/lighthouse
@@ -44,12 +43,14 @@ services:
           - ${CL_ALIAS:-default-consensus}
     <<: *logging
     entrypoint:
-      - docker-entrypoint.sh
       - lighthouse
-      - bn
+      - beacon_node
       - --disable-upnp
       - --datadir
       - /var/lib/lighthouse
+      - --testnet-dir=${CL_TESTNET_DIR:-/config}
+      - --eth1
+      - --http
       - --gui
       - --http-address
       - 0.0.0.0
@@ -89,7 +90,6 @@ services:
     restart: "unless-stopped"
     image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
     pull_policy: never
-    user: lhvalidator
     environment:
       - MEV_BOOST=${MEV_BOOST}
       - MEV_BUILD_FACTOR=${MEV_BUILD_FACTOR}
@@ -112,11 +112,11 @@ services:
           - ${VC_ALIAS:-vc}
     <<: *logging
     entrypoint:
-      - docker-entrypoint-vc.sh
       - lighthouse
-      - vc
+      - validator_client
       - --datadir
       - /var/lib/lighthouse
+      - --testnet-dir=${CL_TESTNET_DIR:-/config}
       - --beacon-nodes
       - ${CL_NODE:-http://consensus:5052}
       - --broadcast
@@ -158,7 +158,6 @@ services:
     restart: "no"
     image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
     pull_policy: never
-    user: root
     volumes:
       - ${VALIDATOR_DATA_DIR:-./data/cl/validator}:/var/lib/lighthouse
       - ${LH_CONFIG_DIR:-./config/lighthouse}:${CL_TESTNET_DIR:-/config}:ro

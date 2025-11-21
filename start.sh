@@ -17,9 +17,10 @@ Usage: ./start.sh <command> [env-file]
 
 Commands:
   bootnode     Start only the bootnode service
-  bn           Start execution + bootnode + beacon node (no validator client)
-  bn-vc        Start execution + bootnode + beacon node + validator client
+  beacon           Start execution + beacon node (no validator client)
+  beacon-vc        Start execution + beacon node + validator client
   import-keys  Materialize validator key/password files & run import job
+  dora         Start dora explorer
   build        Build images defined in the compose files
   down         Stop and remove the running stack
 
@@ -84,17 +85,25 @@ main() {
 
   case "$command" in
     bootnode)
+      # Run only the Lighthouse bootnode service
       prepare_stack
       compose up -d bootnode
       ;;
-    bn)
+    beacon)
+      # Beacon node without validator client: execution + consensus
       prepare_stack
-      compose up -d execution bootnode consensus dora
+      compose up -d execution consensus
       ;;
-    bn-vc)
+    beacon-vc)
+      # Beacon node with validator client: execution + consensus + validator
       prepare_stack
       ensure_validator_materials
-      compose up -d execution bootnode consensus validator dora
+      compose up -d execution consensus validator
+      ;;
+    dora)
+      # Dora explorer (with its required execution + consensus dependencies)
+      prepare_stack
+      compose up -d execution consensus dora
       ;;
     import-keys)
       prepare_stack

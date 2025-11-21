@@ -5,3 +5,8 @@ test/*
 node/*
 bootnode/*
 deposit.sh
+.env
+.env.bootnode
+.env.dora
+config/*
+data/*

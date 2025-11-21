@@ -31,25 +31,21 @@ services:
       - |
         set -eu
         DATA_DIR=/data
-        GENESIS_PATH="/config/${EL_GENESIS_FILE:-genesis.json}"
-        mkdir -p "${DATA_DIR}"
+        mkdir -p /data
+        # Always use /config/genesis.json for this stack
         if [ -n "${EL_GENESIS_JSON:-}" ]; then
           mkdir -p /config
-          printf '%s\n' "${EL_GENESIS_JSON}" > "${GENESIS_PATH}"
+          printf '%s\n' "${EL_GENESIS_JSON}" > "/config/genesis.json"
         fi
-        if [ -f "${GENESIS_PATH}" ] && [ ! -d "${DATA_DIR}/geth/chaindata" ]; then
-          echo "Initializing geth datadir with ${GENESIS_PATH}"
-          geth init --datadir "${DATA_DIR}" "${GENESIS_PATH}"
+        if [ -f "/config/genesis.json" ] && [ ! -d "${DATA_DIR}/geth/chaindata" ]; then
+          echo "Initializing geth datadir with /config/genesis.json"
+          geth init --datadir "${DATA_DIR}" "/config/genesis.json"
         fi
         if [ -n "${JWT_SECRET:-}" ]; then
           printf '%s' "${JWT_SECRET}" > "/jwt/${JWT_SECRET_FILENAME:-jwtsecret}"
         fi
         if [ ! -s "/jwt/${JWT_SECRET_FILENAME:-jwtsecret}" ]; then
           od -An -tx1 -N32 /dev/urandom | tr -d ' \n' | head -c 64 > "/jwt/${JWT_SECRET_FILENAME:-jwtsecret}"
-        fi
-        BOOTNODES_ARG=""
-        if [ -n "${EL_BOOTNODES:-}" ]; then
-          BOOTNODES_ARG="--bootnodes=${EL_BOOTNODES}"
         fi
         # shellcheck disable=SC2086
         exec geth \
@@ -73,7 +69,7 @@ services:
           --metrics \
           --metrics.addr=0.0.0.0 \
           --metrics.port="${EL_METRICS_PORT:-6060}" \
-          ${BOOTNODES_ARG} \
+          --bootnodes=${EL_BOOTNODES:-} \
           ${EL_EXTRAS:-}
     ports:
       - ${HOST_IP:-}:${EL_HTTP_PORT:-8545}:${EL_HTTP_PORT:-8545}
