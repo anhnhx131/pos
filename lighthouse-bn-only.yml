@@ -9,10 +9,10 @@ services:
       - boot_node
       - --datadir=/var/lib/lighthouse/bootnode
       - --testnet-dir=/var/lib/lighthouse/config
-      - --listen-address=${BOOTNODE_LISTEN_ADDRESS:-0.0.0.0}
       - --disable-packet-filter
       - --enable-enr-auto-update
-      - --enr-address=${NODE_IP}
+      # - --listen-address=${NODE_IP}
+      # - --enr-address=${NODE_IP}
     volumes:
       - ./.eth/lighthouse/bootnode:/var/lib/lighthouse/bootnode
       - ./.eth/lighthouse/config:/var/lib/lighthouse/config

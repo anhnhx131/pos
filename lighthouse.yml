@@ -34,7 +34,7 @@ services:
     ports:
       - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/tcp
       - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/udp
-      - ${HOST_IP:-}:${CL_QUIC_PORT:-9001}:${CL_QUIC_PORT:-9001}/udp
+      - ${HOST_IP:-}:${CL_REST_PORT:-3500}:${CL_REST_PORT:-3500}/tcp
     networks:
       default:
         aliases:
@@ -46,7 +46,6 @@ services:
       - lighthouse
       - beacon_node
       - --datadir=/var/lib/lighthouse/beacon
-      - --eth1
       - --http
       - --http-address=0.0.0.0
       - --http-port=3500
@@ -55,13 +54,12 @@ services:
       - --debug-level=${LOG_LEVEL}
       - --execution-jwt=/var/lib/lighthouse/beacon/ee-secret/jwtsecret
       - --testnet-dir=/var/lib/lighthouse/config
-      - --disable-upnp
+      # - --disable-upnp
       - --enr-tcp-port=9000
       - --enr-udp-port=9000
-      - --gui
-      - --enable-private-discovery
-      - --enr-address=${NODE_IP}
-      - --boot-nodes=${CL_BOOTNODE_ENR}
+      # - --enr-address=1.55.142.116
+      # - --listen-address=0.0.0.0
+      - --boot-nodes=enr:-IS4QFGTfVMehhkdQOe8oIj0q2qj9NjcjQvXNxQOyGYZbLbzKv8MWXm9i8VORXrQ6Vmb-Fs_kKiJWH5qf4S-EuXLRgcBgmlkgnY0gmlwhCJUXKaJc2VjcDI1NmsxoQJjt8U5A8x8ZOeHGLHaRXNCGjJ1qAlSpbbVQelfEXIt9oN1ZHCCIyg
     labels:
       - metrics.scrape=true
       - metrics.path=/metrics
@@ -97,7 +95,7 @@ services:
     entrypoint:
       - lighthouse
       - validator_client
-      - --beacon-nodes=${CL_NODE:-http://consensus:5052}
+      # - --beacon-nodes=${CL_NODE:-http://consensus:5052}
       - --validators-dir=/var/lib/lighthouse/validators
       - --testnet-dir=/var/lib/lighthouse/config
       - --http
