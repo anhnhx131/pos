@@ -13,9 +13,9 @@ services:
     pull_policy: if_not_present
     stop_grace_period: 1m
     volumes:
-      - ${LH_CONSENSUS_DATA_DIR:-./data/cl/consensus}:/var/lib/lighthouse
-      - ${LH_CONFIG_DIR:-./config/lighthouse}:${CL_TESTNET_DIR:-/config}:ro
-      - ${JWT_SECRET_DIR:-./shared/jwt}:/var/lib/lighthouse/beacon/ee-secret
+      - ./.eth/lighthouse/beacon:/var/lib/lighthouse/beacon
+      - ./.eth/lighthouse/config:/var/lib/lighthouse/config
+      - ./.eth/jwtsecret:/var/lib/lighthouse/beacon/ee-secret
       - /etc/localtime:/etc/localtime:ro
     environment:
       - CHECKPOINT_SYNC_URL=${CHECKPOINT_SYNC_URL}
@@ -46,42 +46,23 @@ services:
     entrypoint:
       - lighthouse
       - beacon_node
-      - --disable-upnp
-      - --datadir
-      - /var/lib/lighthouse
-      - --testnet-dir=${CL_TESTNET_DIR:-/config}
+      - --datadir=/var/lib/lighthouse/beacon
       - --eth1
       - --http
-      - --gui
-      - --http-address
-      - 0.0.0.0
-      - --http-port
-      - ${CL_REST_PORT:-5052}
+      - --http-address=0.0.0.0
+      - --http-port=3500
       - --http-allow-origin=*
-      - --listen-address
-      - 0.0.0.0
-      - --port
-      - ${CL_P2P_PORT:-9000}
-      - --quic-port
-      - ${CL_QUIC_PORT:-9001}
-      - --target-peers
-      - ${CL_MAX_PEER_COUNT:-100}
-      - --execution-endpoint
-      - ${EL_NODE}
-      - --execution-jwt
-      - /var/lib/lighthouse/beacon/ee-secret/jwtsecret
-      - --debug-level=${LOG_LEVEL}
-      - --metrics
-      - --metrics-address
-      - 0.0.0.0
-      - --metrics-port
-      - "8008"
-      - --suggested-fee-recipient
-      - ${FEE_RECIPIENT}
-      - --enr-address
-      - ${NODE_IP}
-      - --boot-nodes
-      - ${CL_BOOTNODE_ENR}
+      - --debug-level=debug
+      - --execution-endpoint=http://$EL_NODE_IP:8551
+      - --execution-jwt=/var/lib/lighthouse/beacon/ee-secret
+      - --testnet-dir=/var/lib/lighthouse/config
+      - --disable-upnp
+      - --enr-tcp-port=9000
+      - --enr-udp-port=9000
+      - --gui
+      - --enable-private-discovery
+      - --enr-address=${NODE_IP}
+      - --boot-nodes=${CL_BOOTNODE_ENR}
     labels:
       - metrics.scrape=true
       - metrics.path=/metrics
@@ -106,8 +87,8 @@ services:
       - ENABLE_DIST_ATTESTATION_AGGR=${ENABLE_DIST_ATTESTATION_AGGR:-false}
       - CL_TESTNET_DIR=${CL_TESTNET_DIR:-/config}
     volumes:
-      - ${VALIDATOR_DATA_DIR:-./data/cl/validator}:/var/lib/lighthouse
-      - ${LH_CONFIG_DIR:-./config/lighthouse}:${CL_TESTNET_DIR:-/config}:ro
+      - ./.eth/lighthouse/config:/var/lib/lighthouse/config
+      - ./.eth/lighthouse/validators:/var/lib/lighthouse/validators
       - /etc/localtime:/etc/localtime:ro
     networks:
       default:
@@ -117,28 +98,15 @@ services:
     entrypoint:
       - lighthouse
       - validator_client
-      - --datadir
-      - /var/lib/lighthouse
-      - --testnet-dir=${CL_TESTNET_DIR:-/config}
-      - --beacon-nodes
-      - ${CL_NODE:-http://consensus:5052}
-      - --broadcast
-      - attestations,sync-committee,blocks,subscriptions
-      - --debug-level=${LOG_LEVEL}
-      - --metrics
-      - --metrics-address
-      - 0.0.0.0
-      - --metrics-port
-      - "8009"
+      - --beacon-nodes=${CL_NODE:-http://consensus:5052}
+      - --validators-dir=/var/lib/lighthouse/validators
+      - --testnet-dir=/var/lib/lighthouse/config
       - --http
-      - --http-port
-      - ${KEY_API_PORT:-7500}
-      - --http-address
-      - 0.0.0.0
-      - --http-allow-origin=*
+      - --http-address=0.0.0.0
       - --unencrypted-http-transport
-      - --suggested-fee-recipient
-      - ${FEE_RECIPIENT}
+      - --http-port=5062
+      - --http-allow-origin=*
+      - --suggested-fee-recipient=0x23081455D3FEaf17426176dfc5Ee7A3ce519aD33
     depends_on:
       consensus:
         condition: service_started
@@ -162,8 +130,8 @@ services:
     image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
     pull_policy: if_not_present
     volumes:
-      - ${VALIDATOR_DATA_DIR:-./data/cl/validator}:/var/lib/lighthouse
-      - ${LH_CONFIG_DIR:-./config/lighthouse}:${CL_TESTNET_DIR:-/config}:ro
+      - ./.eth/lighthouse/validator_keys:/var/lib/lighthouse/validator_keys
+      - ./.eth/lighthouse/config:/var/lib/lighthouse/config
     <<: *logging
     environment:
       - NETWORK=${NETWORK}
@@ -176,7 +144,7 @@ services:
       - --datadir=/var/lib/lighthouse
       - --directory=/var/lib/lighthouse/validator_keys
       - --password-file=/var/lib/lighthouse/validator_keys/${VALIDATOR_PASSWORD_FILENAME:-password.txt}
-      - --testnet-dir=${CL_TESTNET_DIR:-/config}
+      - --testnet-dir=/var/lib/lighthouse/config
       - --reuse-password
 
   validator-keys:

@@ -8,5 +8,4 @@ deposit.sh
 .env
 .env.bootnode
 .env.dora
-config/*
-data/*
+.eth/*

@@ -33,40 +33,11 @@ if [ -n "${ANCIENT_DIR}" ] && [ ! "${ANCIENT_DIR}" = ".nada" ]; then
   __ancient="--datadir.ancient /var/lib/ancient"
 fi
 
-if [[ "${NETWORK}" =~ ^https?:// ]]; then
-  echo "Custom testnet at ${NETWORK}"
-  repo=$(awk -F'/tree/' '{print $1}' <<< "${NETWORK}")
-  branch=$(awk -F'/tree/' '{print $2}' <<< "${NETWORK}" | cut -d'/' -f1)
-  config_dir=$(awk -F'/tree/' '{print $2}' <<< "${NETWORK}" | cut -d'/' -f2-)
-  echo "This appears to be the ${repo} repo, branch ${branch} and config directory ${config_dir}."
-  # For want of something more amazing, let's just fail if git fails to pull this
-  set -e
-  if [ ! -d "/var/lib/geth/testnet/${config_dir}" ]; then
-    mkdir -p /var/lib/geth/testnet
-    cd /var/lib/geth/testnet
-    git init --initial-branch="${branch}"
-    git remote add origin "${repo}"
-    git config core.sparseCheckout true
-    echo "${config_dir}" > .git/info/sparse-checkout
-    git pull origin "${branch}"
-  fi
-  bootnodes="$(awk -F'- ' '!/^#/ && NF>1 {print $2}' "/var/lib/geth/testnet/${config_dir}/enodes.yaml" | paste -sd ",")"
-  networkid="$(jq -r '.config.chainId' "/var/lib/geth/testnet/${config_dir}/genesis.json")"
-  set +e
-  __network="--bootnodes=${bootnodes} --networkid=${networkid}"
-  if [ ! -d "/var/lib/geth/geth/chaindata/" ]; then
-    geth init --datadir /var/lib/geth "/var/lib/geth/testnet/${config_dir}/genesis.json"
-  fi
-else
-  __network="--${NETWORK}"
-fi
+# Create network directory
+__datadir="--datadir /var/lib/geth"
 
-# New or old datadir
-if [ -d /var/lib/goethereum/geth/chaindata ]; then
-  __datadir="--datadir /var/lib/goethereum"
-else
-  __datadir="--datadir /var/lib/geth"
-fi
+# Init data
+geth init ${__datadir} "/var/lib/geth/network/genesis.json"
 
 # Set verbosity
 shopt -s nocasematch

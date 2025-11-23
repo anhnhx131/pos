@@ -1,0 +1,40 @@
+# hadolint global ignore=DL3007,DL3008,DL3018,DL3059
+ARG DOCKER_TAG=stable
+ARG DOCKER_REPO=ethereum/client-go
+
+FROM ${DOCKER_REPO}:${DOCKER_TAG}
+
+# Unused, this is here to avoid build time complaints
+ARG BUILD_TARGET
+ARG SRC_REPO
+
+ARG USER=geth
+ARG UID=10001
+# GID 10002 is deliberate so it can exchange secret with CL
+ARG GID=10002
+
+RUN apk update && apk add --no-cache ca-certificates tzdata bash su-exec git git-lfs jq
+
+RUN addgroup \
+    --gid "${GID}" \
+    "${USER}"
+
+# See https://stackoverflow.com/a/55757473/12429735RUN
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --shell "/sbin/nologin" \
+    --uid "${UID}" \
+    --ingroup "${USER}" \
+    "${USER}"
+
+RUN mkdir -p /var/lib/geth/ee-secret && chown -R ${USER}:${USER} /var/lib/geth && chmod -R 700 /var/lib/geth && chmod 777 /var/lib/geth/ee-secret
+
+# Cannot assume buildkit, hence no chmod
+COPY --chown=${USER}:${USER} ./docker-entrypoint.sh /usr/local/bin/
+# Belt and suspenders
+RUN chmod -R 755 /usr/local/bin/*
+
+USER ${USER}
+
+ENTRYPOINT ["geth"]
