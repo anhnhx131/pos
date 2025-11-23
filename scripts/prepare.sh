@@ -13,7 +13,7 @@ prepare_directories() {
 }
 
 ensure_jwt_secret() {
-  local secret_dir="${JWT_SECRET_DIR:-./shared/jwt}"
+  local secret_dir="./.eth/ee-secret"
   ensure_directory "$secret_dir"
   local secret_file="${secret_dir}/${JWT_SECRET_FILENAME:-jwtsecret}"
   if [[ -n "${JWT_SECRET:-}" ]]; then

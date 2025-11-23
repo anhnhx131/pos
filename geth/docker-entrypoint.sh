@@ -1,28 +1,23 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-if [ "$(id -u)" = '0' ]; then
-  chown -R geth:geth /var/lib/geth
-  exec su-exec geth docker-entrypoint.sh "$@"
-fi
+#!/bin/sh
+set -e
 
 if [ -n "${JWT_SECRET}" ]; then
   echo -n "${JWT_SECRET}" > /var/lib/geth/ee-secret/jwtsecret
   echo "JWT secret was supplied in .env"
 fi
 
-if [[ ! -f /var/lib/geth/ee-secret/jwtsecret ]]; then
+if [ ! -f /var/lib/geth/ee-secret/jwtsecret ]; then
   echo "Generating JWT secret"
   __secret1=$(head -c 8 /dev/urandom | od -A n -t u8 | tr -d '[:space:]' | sha256sum | head -c 32)
   __secret2=$(head -c 8 /dev/urandom | od -A n -t u8 | tr -d '[:space:]' | sha256sum | head -c 32)
   echo -n "${__secret1}""${__secret2}" > /var/lib/geth/ee-secret/jwtsecret
 fi
 
-if [[ -O "/var/lib/geth/ee-secret" ]]; then
+if [ -O "/var/lib/geth/ee-secret" ]; then
   # In case someone specifies JWT_SECRET but it's not a distributed setup
   chmod 777 /var/lib/geth/ee-secret
 fi
-if [[ -O "/var/lib/geth/ee-secret/jwtsecret" ]]; then
+if [ -O "/var/lib/geth/ee-secret/jwtsecret" ]; then
   chmod 666 /var/lib/geth/ee-secret/jwtsecret
 fi
 
@@ -36,12 +31,15 @@ fi
 # Create network directory
 __datadir="--datadir /var/lib/geth"
 
-# Init data
-geth init ${__datadir} "/var/lib/geth/network/genesis.json"
+# Init data only if chaindata doesn't exist
+if [ ! -d "/var/lib/geth/geth/chaindata" ] && [ ! -d "/var/lib/goethereum/geth/chaindata" ]; then
+  echo "Initializing geth with genesis.json"
+  geth init ${__datadir} "/var/lib/geth/genesis.json"
+fi
 
-# Set verbosity
-shopt -s nocasematch
-case ${LOG_LEVEL} in
+# Set verbosity (case-insensitive matching)
+_log_level=$(echo "${LOG_LEVEL}" | tr '[:upper:]' '[:lower:]')
+case ${_log_level} in
   error)
     __verbosity="--verbosity 1"
     ;;
@@ -65,7 +63,7 @@ esac
 
 if [ "${ARCHIVE_NODE}" = "true" ]; then
   echo "Geth archive node without pruning"
-  if [[ ! -d /var/lib/geth/geth/chaindata && ! -d /var/lib/goethereum/geth/chaindata ]]; then
+  if [ ! -d /var/lib/geth/geth/chaindata ] && [ ! -d /var/lib/goethereum/geth/chaindata ]; then
     touch /var/lib/geth/path-archive
   fi
   if [ -f /var/lib/geth/path-archive ]; then
@@ -99,7 +97,7 @@ if [ -f /var/lib/geth/prune-marker ]; then
   fi
 # Word splitting is desired for the command line parameters
 # shellcheck disable=SC2086
-  exec "$@" ${__datadir} ${__ancient} ${__network} ${EL_EXTRAS} prune-history
+  exec "$@" ${__ancient} ${EL_EXTRAS} prune-history
 else
-  exec "$@" ${__datadir} ${__ancient} ${__network} ${__prune} ${__verbosity} ${EL_EXTRAS}
+  exec "$@" ${__ancient} ${__prune} ${__verbosity} ${EL_EXTRAS}
 fi

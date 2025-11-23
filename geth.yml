@@ -9,15 +9,7 @@ x-logging: &logging
 services:
   execution:
     restart: "unless-stopped"
-    build:
-      context: ./geth
-      args:
-        - DOCKER_TAG=${GETH_DOCKER_TAG:-stable}
-        - DOCKER_REPO=${GETH_DOCKER_REPO:-ethereum/client-go}
-    stop_grace_period: 5m
-    image: geth:local
-    pull_policy: never
-    user: geth
+    image: ethereum/client-go:v1.11.6
     environment:
       - JWT_SECRET=${JWT_SECRET:-}
       - LOG_LEVEL=${LOG_LEVEL:-info}
@@ -27,11 +19,12 @@ services:
       - IPV6=${IPV6:-false}
       - ANCIENT_DIR=${ANCIENT_DIR:-}
     volumes:
+      - ./geth/docker-entrypoint.sh:/entrypoint.sh
       - ./.eth/geth:/var/lib/geth
-      - ./.eth/${ANCIENT_DIR:-.nada}:/var/lib/ancient
+      - ./.eth/geth/${ANCIENT_DIR:-.nada}:/var/lib/ancient
       - ./.eth/etc/localtime:/etc/localtime:ro
-      - ./.eth/jwtsecret:/var/lib/geth/ee-secret
-      - ./.eth/geth/genesis.json:/var/lib/geth/network/genesis.json
+      - ./.eth/ee-secret:/var/lib/geth/ee-secret
+      - ./.eth/geth/genesis.json:/var/lib/geth/genesis.json
     ports:
       - ${HOST_IP:-}:${EL_P2P_PORT:-30303}:${EL_P2P_PORT:-30303}/tcp
       - ${HOST_IP:-}:${EL_P2P_PORT:-30303}:${EL_P2P_PORT:-30303}/udp
@@ -43,38 +36,27 @@ services:
           - ${EL_ALIAS:-default-execution}
     <<: *logging
     entrypoint:
-      - docker-entrypoint.sh
+      - /entrypoint.sh
       - geth
+      - --datadir=/var/lib/geth
+      - --networkid=${EL_NETWORK_ID:-84}
       - --http
-      - --http.addr
-      - 0.0.0.0
+      - --http.addr=0.0.0.0
       - --http.vhosts=*
       - --http.corsdomain=*
-      - --port
-      - ${EL_P2P_PORT:-30303}
-      - --http.port
-      - ${EL_RPC_PORT:-8545}
-      - --ws
-      - --ws.addr
-      - 0.0.0.0
-      - --ws.port
-      - ${EL_WS_PORT:-8546}
+      - --http.port=${EL_RPC_PORT:-8545}
+      - --ws.addr=0.0.0.0
+      - --ws.port=${EL_WS_PORT:-8546}
       - --ws.origins=*
       - --metrics
-      - --pprof
-      - --pprof.addr
-      - 0.0.0.0
-      - --authrpc.jwtsecret
-      - /var/lib/geth/ee-secret/jwtsecret
-      - --authrpc.addr
-      - 0.0.0.0
-      - --authrpc.port
-      - ${EE_PORT:-8551}
+      - --authrpc.jwtsecret=/var/lib/geth/ee-secret/jwtsecret
+      - --authrpc.addr=0.0.0.0
+      - --authrpc.port=${EE_PORT:-8551}
       - --authrpc.vhosts=*
-      - --maxpeers
-      - ${EL_MAX_PEER_COUNT:-50}
-      - --bootnodes
-      - ${EL_BOOTNODES}
+      - --maxpeers=${EL_MAX_PEER_COUNT:-50}
+      - --bootnodes=${EL_BOOTNODES}
+      - --rpc.allow-unprotected-txs
+      - --syncmode=full
     labels:
       - metrics.scrape=true
       - metrics.path=/debug/metrics/prometheus

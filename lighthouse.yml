@@ -15,7 +15,7 @@ services:
     volumes:
       - ./.eth/lighthouse/beacon:/var/lib/lighthouse/beacon
       - ./.eth/lighthouse/config:/var/lib/lighthouse/config
-      - ./.eth/jwtsecret:/var/lib/lighthouse/beacon/ee-secret
+      - ./.eth/ee-secret:/var/lib/lighthouse/beacon/ee-secret
       - /etc/localtime:/etc/localtime:ro
     environment:
       - CHECKPOINT_SYNC_URL=${CHECKPOINT_SYNC_URL}
@@ -31,7 +31,6 @@ services:
       - CL_P2P_PORT=${CL_P2P_PORT:-9000}
       - CL_QUIC_PORT=${CL_QUIC_PORT:-9001}
       - NETWORK=${NETWORK}
-      - CL_BOOTNODE_ENR=${CL_BOOTNODE_ENR}
     ports:
       - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/tcp
       - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/udp
@@ -52,9 +51,9 @@ services:
       - --http-address=0.0.0.0
       - --http-port=3500
       - --http-allow-origin=*
-      - --debug-level=debug
-      - --execution-endpoint=http://$EL_NODE_IP:8551
-      - --execution-jwt=/var/lib/lighthouse/beacon/ee-secret
+      - --execution-endpoint=${EL_NODE}
+      - --debug-level=${LOG_LEVEL}
+      - --execution-jwt=/var/lib/lighthouse/beacon/ee-secret/jwtsecret
       - --testnet-dir=/var/lib/lighthouse/config
       - --disable-upnp
       - --enr-tcp-port=9000
@@ -131,6 +130,7 @@ services:
     pull_policy: if_not_present
     volumes:
       - ./.eth/lighthouse/validator_keys:/var/lib/lighthouse/validator_keys
+      - ./.eth/lighthouse/validators:/var/lib/lighthouse/validators
       - ./.eth/lighthouse/config:/var/lib/lighthouse/config
     <<: *logging
     environment:
@@ -143,7 +143,7 @@ services:
       - import
       - --datadir=/var/lib/lighthouse
       - --directory=/var/lib/lighthouse/validator_keys
-      - --password-file=/var/lib/lighthouse/validator_keys/${VALIDATOR_PASSWORD_FILENAME:-password.txt}
+      - --password-file=/var/lib/lighthouse/validator_keys/password.txt
       - --testnet-dir=/var/lib/lighthouse/config
       - --reuse-password
 
