@@ -7,15 +7,15 @@ services:
     command:
       - lighthouse
       - boot_node
-      - --datadir=/data
-      - --testnet-dir=/config
+      - --datadir=/var/lib/lighthouse/bootnode
+      - --testnet-dir=/var/lib/lighthouse/config
       - --listen-address=${BOOTNODE_LISTEN_ADDRESS:-0.0.0.0}
       - --disable-packet-filter
       - --enable-enr-auto-update
       - --enr-address=${NODE_IP}
     volumes:
-      - ${BOOTNODE_DATA_DIR:-./data/cl/bootnode}:/data
-      - ${LH_CONFIG_DIR:-./config/lighthouse}:/config:ro
+      - ./.eth/lighthouse/bootnode:/var/lib/lighthouse/bootnode
+      - ./.eth/lighthouse/config:/var/lib/lighthouse/config
     networks:
       default:
         aliases:
