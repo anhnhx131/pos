@@ -60,7 +60,7 @@ services:
       - --port=9000
       - --listen-address=0.0.0.0
       - --enr-address=${NODE_IP}
-      - --boot-nodes=${BOOTNODE_ENR}
+      - --boot-nodes=${CL_BOOTNODE_ENR}
     labels:
       - metrics.scrape=true
       - metrics.path=/metrics
