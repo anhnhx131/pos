@@ -7,3 +7,4 @@ deposit.sh
 .env.bootnode
 .env.dora
 .eth/*
+interact-eth1/*
