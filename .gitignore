@@ -8,3 +8,4 @@ deposit.sh
 .env.dora
 .eth/*
 interact-eth1/*
+.explorer/*
