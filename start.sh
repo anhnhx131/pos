@@ -109,7 +109,8 @@ main() {
     dora)
       # Dora explorer (with its required execution + consensus dependencies)
       prepare_stack
-      compose up -d execution consensus dora
+      prepare_dora_files
+      compose up -d dora
       ;;
     import-keys)
       prepare_stack

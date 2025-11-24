@@ -6,12 +6,6 @@ ensure_directory() {
   [[ -n "$path" ]] && mkdir -p "$path"
 }
 
-prepare_directories() {
-  local config_dir
-  config_dir="$(dirname "${DORA_CONFIG_FILE:-./dora/config.yaml}")"
-  ensure_directory "$config_dir"
-}
-
 ensure_jwt_secret() {
   local secret_dir="./.eth/ee-secret"
   ensure_directory "$secret_dir"
@@ -986,8 +980,169 @@ ensure_validator_materials() {
   umask "$original_umask"
 }
 
+prepare_dora_files() {
+    local config_file="./.explorer/dora/config.yaml"
+    ensure_directory "$(dirname "$config_file")"
+    # build endpoints với newlines thực
+    endpoints=""
+    # i=1
+    CL_RPC_URL_LIST=(
+        'http://34.180.107.231:3500'
+        'http://34.146.250.32:3500'
+        'http://34.180.81.197:3500'
+    )
+    # for url in $CL_RPC_URL_LIST; do
+    # endpoints+=$(printf '    - name: "local%d"\n      url: "%s"\n' "$i" "$url")
+    # i=$((i+1))
+    # done
+
+    endpoints=""
+    IFS=',' read -r -a arr <<< "$CL_RPC_URL_LIST"
+
+    endpoints=""
+    i=1
+    for url in "${arr[@]}"; do
+        endpoints+=$(printf '    - name: "local%d"\n      url: "%s"\n' "$i" "$url")
+        i=$((i+1))
+    done
+
+
+    # echo "Endpoints: ${CL_RPC_URL_LIST[0]}"
+    # echo "Endpoints: ${CL_RPC_URL_LIST[1]}"
+    # echo "Endpoints: ${CL_RPC_URL_LIST[2]}"
+
+    cat >"$config_file"<<EOF
+logging:
+  #outputLevel: "info"
+  #outputStderr: false
+
+  #filePath: "explorer.log"
+  #fileLevel: "warn"
+
+# Chain network configuration
+chain:
+  #displayName: "Ephemery Iteration xy"
+
+# HTTP Server configuration
+server:
+  host: "0.0.0.0" # Address to listen on
+  port: "8080" # Port to listen on
+
+frontend:
+  enabled: true # Enable or disable to web frontend
+  debug: false
+  minimize: false # minimize html templates
+
+  # Name of the site, displayed in the title tag
+  siteName: "Dora the Explorer"
+  siteSubtitle: ""
+  
+  # link to EL Explorer
+  ethExplorerLink: ""
+
+  # file or inventory url to load validator names from
+  validatorNamesYaml: ""
+  validatorNamesInventory: ""
+
+  # frontend features
+  disablePageCache: false
+  showSensitivePeerInfos: false
+  showPeerDASInfos: false
+  showSubmitDeposit: false
+  showSubmitElRequests: false
+  publicRpcUrl: $DORA_EL_RPC_URL
+  
+beaconapi:
+  # beacon node rpc endpoints
+  endpoints:
+    - name: "local"
+      url: $DORA_CL_RPC_URL
+
+  # local cache for page models
+  localCacheSize: 100 # 100MB
+
+  # remote cache for page models
+  redisCacheAddr: ""
+  redisCachePrefix: ""
+
+executionapi:
+  # execution node rpc endpoints
+  endpoints:
+    - name: "local"
+      url: $DORA_EL_RPC_URL
+  
+  logBatchSize: 1000
+  depositDeployBlock: 0 # el block number from where to crawl the deposit contract (should be <=, but close to the deposit contract deployment block)
+  electraDeployBlock: 0 # el block number from where to crawl the electra system contracts (should be <=, but close to electra fork activation block)
+
+# indexer keeps track of the latest epochs in memory.
+indexer:
+  # max number of epochs to keep in memory
+  inMemoryEpochs: 3
+
+  # number of epochs to keep validator activity history for (high memory usage for large validator sets)
+  activityHistoryLength: 6
+
+  # disable synchronizing historic data
+  disableSynchronizer: false
+
+  # reset synchronization state to this epoch on startup - only use to resync database, comment out afterwards
+  #resyncFromEpoch: 0
+
+  # force re-synchronization of epochs that are already present in DB - only use to fix missing data after schema upgrades
+  #resyncForceUpdate: true
+
+  # number of seconds to pause the synchronization between each epoch (don't overload CL client)
+  syncEpochCooldown: 2
+
+  # maximum number of parallel beacon state requests (might cause high memory usage)
+  maxParallelValidatorSetRequests: 1
+
+# database configuration
+database:
+  engine: "sqlite" # sqlite / pgsql
+
+  # sqlite settings (only used if engine is sqlite)
+  sqlite:
+    file: "./explorer-db.sqlite"
+
+  # pgsql settings (only used if engine is pgsql)
+  pgsql:
+    host: "127.0.0.1"
+    port: 5432
+    user: ""
+    password: ""
+    name: ""
+  pgsqlWriter: # optional separate writer connection (used for replication setups)
+    host: ""
+    port: 5432
+    user: ""
+    password: ""
+    name: ""
+
+# separate block db for storing block bodies (no archive beacon node required)
+blockDb:
+  engine: "none" # pebble / s3 / none (disable block db)
+
+  # pebble settings (only used if engine is set to pebble)
+  pebble:
+    path: "./tmp-blockdb.peb"
+    cacheSize: 100 # 100MB
+
+  # s3 settings (only used if engine is set to s3)
+  s3:
+    bucket: ""
+    endpoint: ""
+    secure: false
+    region: ""
+    accessKey: ""
+    secretKey: ""
+    path: "" # path prefix
+
+EOF
+}
+
 prepare_stack() {
-  prepare_directories
   prepare_execution_files
   prepare_consensus_files
   ensure_jwt_secret

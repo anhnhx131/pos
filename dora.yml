@@ -2,18 +2,14 @@ version: "3.8"
 
 services:
   dora:
-    image: ${DORA_IMAGE:-pk910/dora-the-explorer:latest}
+    image: pk910/dora-the-explorer:v1.17.0
     restart: unless-stopped
     command:
-      - -config=/config/config.yaml
+      - -config=/data/config.yaml
     ports:
-      - ${HOST_IP:-}:${DORA_HOST_PORT:-3000}:3000
-    depends_on:
-      - execution
-      - consensus
+      - 8080:8080
     volumes:
-      - ${DORA_CONFIG_FILE:-./dora/config.yaml}:/config/config.yaml:ro
-      - ${DORA_DATA_DIR:-./dora/data}:/data
+      - ./.explorer/dora:/data
     networks:
       default:
         aliases:
