@@ -46,6 +46,7 @@ services:
       - --datadir=/var/lib/geth
       - --networkid=${EL_NETWORK_ID:-84}
       - --http
+      - --http.api=eth,web3,net,debug,clique,admin,personal,txpool,debug,engine
       - --http.addr=0.0.0.0
       - --http.vhosts=*
       - --http.corsdomain=*
