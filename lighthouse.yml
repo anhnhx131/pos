@@ -96,7 +96,7 @@ services:
     entrypoint:
       - lighthouse
       - validator_client
-      # - --beacon-nodes=${CL_NODE:-http://consensus:5052}
+      - --beacon-nodes=${CL_NODE:-http://consensus:3500}
       - --validators-dir=/var/lib/lighthouse/validators
       - --testnet-dir=/var/lib/lighthouse/config
       - --http
