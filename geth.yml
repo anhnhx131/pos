@@ -23,7 +23,7 @@ services:
       - CLIQUE_MINER_PRIVATE_KEY=${CLIQUE_MINER_PRIVATE_KEY:-}
       - CLIQUE_MINER_ADDRESS=${CLIQUE_MINER_ADDRESS:-}
       - EL_BOOTNODES=${EL_BOOTNODES:-}
-      - NODE_IP=${NODE_IP:-}
+      - EL_BOOT_NODE_KEY=${EL_BOOT_NODE_KEY:-}
     volumes:
       - ./geth/docker-entrypoint.sh:/entrypoint.sh
       - ./.eth/geth:/var/lib/geth
@@ -65,6 +65,7 @@ services:
       - --maxpeers=${EL_MAX_PEER_COUNT:-50}
       - --rpc.allow-unprotected-txs
       - --syncmode=full
+      - --nat=extip:${NODE_IP}
     labels:
       - metrics.scrape=true
       - metrics.path=/debug/metrics/prometheus

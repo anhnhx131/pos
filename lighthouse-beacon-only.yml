@@ -1,0 +1,67 @@
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100m
+      max-file: "3"
+      tag: '{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}'
+
+services:
+  consensus:
+    restart: "unless-stopped"
+    image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
+    pull_policy: if_not_present
+    stop_grace_period: 1m
+    volumes:
+      - ./.eth/lighthouse/beacon:/var/lib/lighthouse/beacon
+      - ./.eth/lighthouse/config:/var/lib/lighthouse/config
+      - ./.eth/ee-secret:/var/lib/lighthouse/beacon/ee-secret
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - ${HOST_IP:-}:${CL_REST_PORT:-3500}:${CL_REST_PORT:-3500}/tcp
+    networks:
+      default:
+        aliases:
+          - eth2
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${CL_ALIAS:-default-consensus}
+    <<: *logging
+    entrypoint:
+      - lighthouse
+      - beacon_node
+      - --datadir=/var/lib/lighthouse/beacon
+      - --http
+      - --http-address=0.0.0.0
+      - --http-port=3500
+      - --http-allow-origin=*
+      - --execution-endpoint=${EL_NODE}
+      - --debug-level=debug
+      - --execution-jwt=/var/lib/lighthouse/beacon/ee-secret/jwtsecret
+      - --testnet-dir=/var/lib/lighthouse/config
+      - --disable-upnp
+      - --enr-tcp-port=9000
+      - --enr-udp-port=9000
+      - --port=9000
+      - --listen-address=0.0.0.0
+      - --enr-address=${NODE_IP}
+      - --boot-nodes=${CL_BOOTNODE_ENR}
+    labels:
+      - metrics.scrape=true
+      - metrics.path=/metrics
+      - metrics.port=8008
+      - metrics.instance=consensus
+      - metrics.network=${NETWORK}
+
+  set-cl-prune-marker:
+    profiles: ["tools"]
+    image: alpine:3
+    user: "10002:10002"
+    restart: "no"
+    volumes:
+      - lhconsensus-data:/var/lib/lighthouse
+    entrypoint: ["/bin/sh", "-c"]
+    command: /bin/sh
+
+networks:
+  default:
+    enable_ipv6: ${IPV6:-false}

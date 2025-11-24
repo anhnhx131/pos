@@ -4,11 +4,16 @@ set -e
 # Create network directory
 __datadir="--datadir /var/lib/geth"
 __miner_command=""
-__bootnodes=""
+__nodekey=""
 
 if [ -n "${JWT_SECRET}" ]; then
   echo -n "${JWT_SECRET}" > /var/lib/geth/ee-secret/jwtsecret
   echo "JWT secret was supplied in .env"
+fi
+
+if [ -n "${EL_BOOT_NODE_KEY}" ]; then
+  echo -n "${EL_BOOT_NODE_KEY}" > /var/lib/geth/nodekey
+  __nodekey="--nodekey=/var/lib/geth/nodekey"
 fi
 
 if [ ! -f /var/lib/geth/ee-secret/jwtsecret ]; then
@@ -46,7 +51,6 @@ if [ "${CLIQUE_MINER}" = "true" ]; then
   echo "${CLIQUE_MINER_PRIVATE_KEY}" > /var/lib/geth/key.prv
   geth account import ${__datadir} --password /var/lib/geth/password.txt /var/lib/geth/key.prv
   __miner_command="--mine --miner.etherbase ${CLIQUE_MINER_ADDRESS} --unlock ${CLIQUE_MINER_ADDRESS} --password /var/lib/geth/password.txt --allow-insecure-unlock"
-  __bootnodes="--nat extip:${NODE_IP}"
 else 
   __bootnodes="--bootnodes=${EL_BOOTNODES}"
 fi
@@ -101,9 +105,7 @@ else
   __prune=""
 fi
 
-echo "Executing command: $@" ${__miner_command} ${__bootnodes} ${__ancient} ${__verbosity} ${EL_EXTRAS}
-
-exec "$@" ${__miner_command} ${__bootnodes} ${__ancient} ${__verbosity} ${EL_EXTRAS}
+exec "$@" ${__miner_command} ${__bootnodes} ${__nodekey} ${__ancient} ${__verbosity} ${EL_EXTRAS}
 
 # # Word splitting is desired for the command line parameters
 # # shellcheck disable=SC2086
