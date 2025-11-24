@@ -23,6 +23,7 @@ services:
       - CLIQUE_MINER_PRIVATE_KEY=${CLIQUE_MINER_PRIVATE_KEY:-}
       - CLIQUE_MINER_ADDRESS=${CLIQUE_MINER_ADDRESS:-}
       - EL_BOOTNODES=${EL_BOOTNODES:-}
+      - NODE_IP=${NODE_IP:-}
     volumes:
       - ./geth/docker-entrypoint.sh:/entrypoint.sh
       - ./.eth/geth:/var/lib/geth

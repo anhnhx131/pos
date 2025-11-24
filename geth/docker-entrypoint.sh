@@ -46,6 +46,7 @@ if [ "${CLIQUE_MINER}" = "true" ]; then
   echo "${CLIQUE_MINER_PRIVATE_KEY}" > /var/lib/geth/key.prv
   geth account import ${__datadir} --password /var/lib/geth/password.txt /var/lib/geth/key.prv
   __miner_command="--mine --miner.etherbase ${CLIQUE_MINER_ADDRESS} --unlock ${CLIQUE_MINER_ADDRESS} --password /var/lib/geth/password.txt --allow-insecure-unlock"
+  __bootnodes="--nat extip:${NODE_IP}"
 else 
   __bootnodes="--bootnodes=${EL_BOOTNODES}"
 fi
