@@ -34,6 +34,8 @@ services:
     ports:
       - ${HOST_IP:-}:${EL_P2P_PORT:-30303}:${EL_P2P_PORT:-30303}/tcp
       - ${HOST_IP:-}:${EL_P2P_PORT:-30303}:${EL_P2P_PORT:-30303}/udp
+      - ${HOST_IP:-}:${EL_RPC_PORT:-8545}:${EL_RPC_PORT:-8545}/tcp
+      - ${HOST_IP:-}:${EL_WS_PORT:-8546}:${EL_WS_PORT:-8546}/tcp
     networks:
       default:
         aliases:
