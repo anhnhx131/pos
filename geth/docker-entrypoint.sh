@@ -1,6 +1,11 @@
 #!/bin/sh
 set -e
 
+# Create network directory
+__datadir="--datadir /var/lib/geth"
+__miner_command=""
+__bootnodes=""
+
 if [ -n "${JWT_SECRET}" ]; then
   echo -n "${JWT_SECRET}" > /var/lib/geth/ee-secret/jwtsecret
   echo "JWT secret was supplied in .env"
@@ -28,13 +33,21 @@ if [ -n "${ANCIENT_DIR}" ] && [ ! "${ANCIENT_DIR}" = ".nada" ]; then
   __ancient="--datadir.ancient /var/lib/ancient"
 fi
 
-# Create network directory
-__datadir="--datadir /var/lib/geth"
-
 # Init data only if chaindata doesn't exist
 if [ ! -d "/var/lib/geth/geth/chaindata" ] && [ ! -d "/var/lib/goethereum/geth/chaindata" ]; then
   echo "Initializing geth with genesis.json"
   geth init ${__datadir} "/var/lib/geth/genesis.json"
+fi
+
+# Clique miner
+if [ "${CLIQUE_MINER}" = "true" ]; then
+  echo "[Clique] Write password and private key to file"
+  echo "${CLIQUE_MINER_PASSWORD}" > /var/lib/geth/password.txt
+  echo "${CLIQUE_MINER_PRIVATE_KEY}" > /var/lib/geth/key.prv
+  geth account import ${__datadir} --password /var/lib/geth/password.txt /var/lib/geth/key.prv
+  __miner_command="--mine --miner.etherbase ${CLIQUE_MINER_ADDRESS} --unlock ${CLIQUE_MINER_ADDRESS} --password /var/lib/geth/password.txt --allow-insecure-unlock"
+else 
+  __bootnodes="--bootnodes=${EL_BOOTNODES}"
 fi
 
 # Set verbosity (case-insensitive matching)
@@ -87,17 +100,21 @@ else
   __prune=""
 fi
 
-# Word splitting is desired for the command line parameters
-# shellcheck disable=SC2086
-if [ -f /var/lib/geth/prune-marker ]; then
-  rm -f /var/lib/geth/prune-marker
-  if [ "${ARCHIVE_NODE}" = "true" ]; then
-    echo "Geth is an archive node. Not attempting to prune: Aborting."
-    exit 1
-  fi
-# Word splitting is desired for the command line parameters
-# shellcheck disable=SC2086
-  exec "$@" ${__ancient} ${EL_EXTRAS} prune-history
-else
-  exec "$@" ${__ancient} ${__prune} ${__verbosity} ${EL_EXTRAS}
-fi
+echo "Executing command: $@" ${__miner_command} ${__bootnodes} ${__ancient} ${__verbosity} ${EL_EXTRAS}
+
+exec "$@" ${__miner_command} ${__bootnodes} ${__ancient} ${__verbosity} ${EL_EXTRAS}
+
+# # Word splitting is desired for the command line parameters
+# # shellcheck disable=SC2086
+# if [ -f /var/lib/geth/prune-marker ]; then
+#   rm -f /var/lib/geth/prune-marker
+#   if [ "${ARCHIVE_NODE}" = "true" ]; then
+#     echo "Geth is an archive node. Not attempting to prune: Aborting."
+#     exit 1
+#   fi
+# # Word splitting is desired for the command line parameters
+# # shellcheck disable=SC2086
+#   exec "$@" ${__miner_command} ${__ancient} ${EL_EXTRAS} prune-history
+# else
+  
+# fi

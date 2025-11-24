@@ -18,6 +18,11 @@ services:
       - MINIMAL_NODE=${EL_MINIMAL_NODE:-}
       - IPV6=${IPV6:-false}
       - ANCIENT_DIR=${ANCIENT_DIR:-}
+      - CLIQUE_MINER=${CLIQUE_MINER:-}
+      - CLIQUE_MINER_PASSWORD=${CLIQUE_MINER_PASSWORD:-}
+      - CLIQUE_MINER_PRIVATE_KEY=${CLIQUE_MINER_PRIVATE_KEY:-}
+      - CLIQUE_MINER_ADDRESS=${CLIQUE_MINER_ADDRESS:-}
+      - EL_BOOTNODES=${EL_BOOTNODES:-}
     volumes:
       - ./geth/docker-entrypoint.sh:/entrypoint.sh
       - ./.eth/geth:/var/lib/geth
@@ -54,7 +59,6 @@ services:
       - --authrpc.port=${EE_PORT:-8551}
       - --authrpc.vhosts=*
       - --maxpeers=${EL_MAX_PEER_COUNT:-50}
-      - --bootnodes=${EL_BOOTNODES}
       - --rpc.allow-unprotected-txs
       - --syncmode=full
     labels:

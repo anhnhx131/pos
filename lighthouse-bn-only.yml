@@ -4,6 +4,9 @@ services:
   bootnode:
     restart: unless-stopped
     image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
+    ports:
+      - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/tcp
+      - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/udp
     command:
       - lighthouse
       - boot_node
@@ -11,12 +14,13 @@ services:
       - --testnet-dir=/var/lib/lighthouse/config
       - --disable-packet-filter
       - --enable-enr-auto-update
-      # - --listen-address=${NODE_IP}
-      # - --enr-address=${NODE_IP}
+      - --debug-level=trace
+      - --listen-address=0.0.0.0
+      - --enr-address=${NODE_IP}
     volumes:
       - ./.eth/lighthouse/bootnode:/var/lib/lighthouse/bootnode
       - ./.eth/lighthouse/config:/var/lib/lighthouse/config
-    networks:
-      default:
-        aliases:
-          - bootnode
+    # networks:
+    #   default:
+    #     aliases:
+    #       - bootnode

@@ -17,6 +17,7 @@ Usage: ./start.sh <command> [env-file]
 
 Commands:
   bootnode     Start only the bootnode service
+  clique       Start only the clique service
   beacon           Start execution + beacon node (no validator client)
   beacon-vc        Start execution + beacon node + validator client
   import-keys  Materialize validator key/password files & run import job
@@ -93,6 +94,11 @@ main() {
       # Beacon node without validator client: execution + consensus
       prepare_stack
       compose up -d execution consensus
+      ;;
+    clique)
+      # Clique node: execution
+      prepare_stack
+      compose up -d execution
       ;;
     beacon-vc)
       # Beacon node with validator client: execution + consensus + validator
