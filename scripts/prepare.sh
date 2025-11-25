@@ -29,7 +29,8 @@ render_execution_genesis_from_env() {
     alloc_json="{}"
   fi
 
-  cat >"$target"<<EOF
+  {
+    cat <<EOF
 {
   "config": {
     "chainId": ${EL_CHAIN_ID:-84},
@@ -50,6 +51,12 @@ render_execution_genesis_from_env() {
     "londonBlock": ${EL_LONDON_BLOCK:-0},
     "muirGlacierBlock": ${EL_MUIR_GLACIER_BLOCK:-0},
     "berlinBlock": ${EL_BERLIN_BLOCK:-0}
+EOF
+    # Append terminalTotalDifficulty conditionally
+    if [[ -n "${EL_TERMINAL_TOTAL_DIFFICULTY:-}" ]]; then
+      printf ',\n    "terminalTotalDifficulty": %s' "${EL_TERMINAL_TOTAL_DIFFICULTY}"
+    fi
+    cat <<EOF
   },
   "nonce": "${EL_NONCE:-0x0}",
   "timestamp": "${EL_TIMESTAMP:-0x5bfbe6b5}",
