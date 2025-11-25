@@ -29,8 +29,9 @@ render_execution_genesis_from_env() {
     alloc_json="{}"
   fi
 
-  {
-    cat <<EOF
+  # Generate base JSON without conditional fields
+  local temp_file="${target}.tmp"
+  cat >"$temp_file"<<EOF
 {
   "config": {
     "chainId": ${EL_CHAIN_ID:-84},
@@ -51,12 +52,6 @@ render_execution_genesis_from_env() {
     "londonBlock": ${EL_LONDON_BLOCK:-0},
     "muirGlacierBlock": ${EL_MUIR_GLACIER_BLOCK:-0},
     "berlinBlock": ${EL_BERLIN_BLOCK:-0}
-EOF
-    # Append terminalTotalDifficulty conditionally
-    if [[ -n "${EL_TERMINAL_TOTAL_DIFFICULTY:-}" ]]; then
-      printf ',\n    "terminalTotalDifficulty": %s' "${EL_TERMINAL_TOTAL_DIFFICULTY}"
-    fi
-    cat <<EOF
   },
   "nonce": "${EL_NONCE:-0x0}",
   "timestamp": "${EL_TIMESTAMP:-0x5bfbe6b5}",
@@ -847,6 +842,58 @@ EOF
   "parentHash": "${EL_PARENT_HASH:-0x0000000000000000000000000000000000000000000000000000000000000000}"
 }
 EOF
+
+  # Use jq to conditionally add fields if they are set
+  if command -v jq >/dev/null 2>&1; then
+    local jq_cmd="."
+    
+    # Add terminalTotalDifficulty if set
+    if [[ -n "${EL_TERMINAL_TOTAL_DIFFICULTY:-}" ]]; then
+      jq_cmd="${jq_cmd} | .config.terminalTotalDifficulty = ${EL_TERMINAL_TOTAL_DIFFICULTY}"
+    fi
+    
+    # Add shanghaiTime if set
+    if [[ -n "${EL_SHANGHAI_TIME:-}" ]]; then
+      jq_cmd="${jq_cmd} | .config.shanghaiTime = ${EL_SHANGHAI_TIME}"
+    fi
+    
+    # Add shanghaiTime if set
+    if [[ -n "${EL_SHANGHAI_TIME:-}" ]]; then
+      jq_cmd="${jq_cmd} | .config.shanghaiTime = ${EL_SHANGHAI_TIME}"
+    fi
+    
+    # Add cancunTime if set
+    if [[ -n "${EL_CANCUN_TIME:-}" ]]; then
+      jq_cmd="${jq_cmd} | .config.cancunTime = ${EL_CANCUN_TIME}"
+    fi
+    
+    # Add pragueTime if set
+    if [[ -n "${EL_PRAGUE_TIME:-}" ]]; then
+      jq_cmd="${jq_cmd} | .config.pragueTime = ${EL_PRAGUE_TIME}"
+    fi
+    
+    # Add blobSchedule.cancun if all cancun blob configs are set
+    if [[ -n "${EL_BLOB_CANCUN_TARGET:-}" && -n "${EL_BLOB_CANCUN_MAX:-}" && -n "${EL_BLOB_CANCUN_BASE_FEE_UPDATE_FRACTION:-}" ]]; then
+      jq_cmd="${jq_cmd} | .config.blobSchedule.cancun.target = ${EL_BLOB_CANCUN_TARGET}"
+      jq_cmd="${jq_cmd} | .config.blobSchedule.cancun.max = ${EL_BLOB_CANCUN_MAX}"
+      jq_cmd="${jq_cmd} | .config.blobSchedule.cancun.baseFeeUpdateFraction = ${EL_BLOB_CANCUN_BASE_FEE_UPDATE_FRACTION}"
+    fi
+    
+    # Add blobSchedule.prague if all prague blob configs are set
+    if [[ -n "${EL_BLOB_PRAGUE_TARGET:-}" && -n "${EL_BLOB_PRAGUE_MAX:-}" && -n "${EL_BLOB_PRAGUE_BASE_FEE_UPDATE_FRACTION:-}" ]]; then
+      jq_cmd="${jq_cmd} | .config.blobSchedule.prague.target = ${EL_BLOB_PRAGUE_TARGET}"
+      jq_cmd="${jq_cmd} | .config.blobSchedule.prague.max = ${EL_BLOB_PRAGUE_MAX}"
+      jq_cmd="${jq_cmd} | .config.blobSchedule.prague.baseFeeUpdateFraction = ${EL_BLOB_PRAGUE_BASE_FEE_UPDATE_FRACTION}"
+    fi
+    
+    # Apply jq transformations
+    jq "${jq_cmd}" "$temp_file" >"$target"
+    rm -f "$temp_file"
+  else
+    # Fallback: move temp file to target if jq is not available
+    mv "$temp_file" "$target"
+    echo "Warning: jq not found, conditional fields will not be added" >&2
+  fi
 }
 
 render_consensus_config_from_env() {
