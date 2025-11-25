@@ -5,8 +5,8 @@ services:
     restart: unless-stopped
     image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
     ports:
-      - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/tcp
-      - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/udp
+      - ${HOST_IP:-}:${CL_BN_P2P_PORT:-9000}:${CL_BN_P2P_PORT:-9000}/tcp
+      - ${HOST_IP:-}:${CL_BN_P2P_PORT:-9000}:${CL_BN_P2P_PORT:-9000}/udp
     command:
       - lighthouse
       - boot_node

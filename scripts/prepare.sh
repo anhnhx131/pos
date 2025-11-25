@@ -975,18 +975,13 @@ prepare_consensus_files() {
     fi
   fi
 
-  local deposit_file="./.eth/lighthouse/config/deposit_contract_block.txt"
-  ensure_directory "$(dirname "$deposit_file")"
+  local deposit_contract_block_file="./.eth/lighthouse/config/deposit_contract_block.txt"
+  ensure_directory "$(dirname "$deposit_contract_block_file")"
   if [[ -n "${CL_DEPOSIT_BLOCK:-}" ]]; then
-    printf '%s\n' "${CL_DEPOSIT_BLOCK}" >"$deposit_file"
-  elif [[ ! -f "$deposit_file" ]]; then
-    local deposit_template="${CL_DEPOSIT_BLOCK_TEMPLATE:-}"
-    if [[ -n "$deposit_template" && -f "$deposit_template" ]]; then
-      cp "$deposit_template" "$deposit_file"
-    else
-      echo "Missing deposit contract block file at ${deposit_file}. Provide CL_DEPOSIT_BLOCK or CL_DEPOSIT_BLOCK_TEMPLATE." >&2
-      exit 1
-    fi
+    printf '%s\n' "${CL_DEPOSIT_BLOCK}" >"$deposit_contract_block_file"
+  else
+    echo "Missing deposit contract block file at ${CL_DEPOSIT_BLOCK}. Provide CL_DEPOSIT_BLOCK." >&2
+    exit 1
   fi
 }
 
