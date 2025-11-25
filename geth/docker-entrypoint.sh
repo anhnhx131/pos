@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
-
+echo "Running docker-entrypoint.sh"
 # Create network directory
 __datadir="--datadir /var/lib/geth"
 __miner_command=""
@@ -39,13 +39,13 @@ if [ -n "${ANCIENT_DIR}" ] && [ ! "${ANCIENT_DIR}" = ".nada" ]; then
 fi
 
 # Init data only if chaindata doesn't exist
-if [ ! -d "/var/lib/geth/geth/chaindata" ] && [ ! -d "/var/lib/goethereum/geth/chaindata" ]; then
-  echo "Initializing geth with genesis.json"
-  geth init ${__datadir} "/var/lib/geth/genesis.json"
-fi
+# if [ ! -d "/var/lib/geth/geth/chaindata" ]; then
+# fi
+echo "Initializing geth with genesis.json"
+geth init ${__datadir} "/var/lib/geth/genesis.json"
 
 # Clique miner
-if [ "${CLIQUE_MINER}" = "true" ]; then
+if [ "${CLIQUE_MINER}" = "true" ] && ! ls /var/lib/geth/keystore/UTC--* >/dev/null 2>&1; then
   echo "[Clique] Write password and private key to file"
   echo "${CLIQUE_MINER_PASSWORD}" > /var/lib/geth/password.txt
   echo "${CLIQUE_MINER_PRIVATE_KEY}" > /var/lib/geth/key.prv
