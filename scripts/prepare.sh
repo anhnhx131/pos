@@ -20,14 +20,6 @@ ensure_jwt_secret() {
 
 render_execution_genesis_from_env() {
   local target="$1"
-  local alloc_json
-  if [[ -n "${EL_GENESIS_ALLOC_JSON:-}" ]]; then
-    alloc_json="${EL_GENESIS_ALLOC_JSON}"
-  elif [[ -n "${EL_GENESIS_ALLOC_FILE:-}" && -f "${EL_GENESIS_ALLOC_FILE}" ]]; then
-    alloc_json="$(cat "${EL_GENESIS_ALLOC_FILE}")"
-  else
-    alloc_json="{}"
-  fi
 
   # Generate base JSON without conditional fields
   local temp_file="${target}.tmp"
@@ -953,17 +945,15 @@ prepare_execution_files() {
   local genesis_path="${genesis_dir}/${EL_GENESIS_FILE:-genesis.json}"
   if [[ -n "${EL_GENESIS_JSON:-}" ]]; then
     printf '%s\n' "${EL_GENESIS_JSON}" >"$genesis_path"
+  elif [[ "${EL_FROM_ENV:-true}" != "false" ]]; then
+    render_execution_genesis_from_env "$genesis_path"
   elif [[ ! -f "$genesis_path" ]]; then
-    if [[ -n "${EL_FROM_ENV:-true}" ]]; then
-      render_execution_genesis_from_env "$genesis_path"
+    local template="${EL_GENESIS_TEMPLATE:-}"
+    if [[ -n "$template" && -f "$template" ]]; then
+      cp "$template" "$genesis_path"
     else
-      local template="${EL_GENESIS_TEMPLATE:-}"
-      if [[ -n "$template" && -f "$template" ]]; then
-        cp "$template" "$genesis_path"
-      else
-        echo "Missing execution genesis at ${genesis_path}. Provide EL_GENESIS_JSON or EL_GENESIS_TEMPLATE." >&2
-        exit 1
-      fi
+      echo "Missing execution genesis at ${genesis_path}. Provide EL_GENESIS_JSON or EL_GENESIS_TEMPLATE." >&2
+      exit 1
     fi
   fi
 }
@@ -973,17 +963,15 @@ prepare_consensus_files() {
   ensure_directory "$(dirname "$config_file")"
   if [[ -n "${CL_CONFIG_YAML:-}" ]]; then
     printf '%s\n' "${CL_CONFIG_YAML}" >"$config_file"
+  elif [[ "${CL_FROM_ENV:-true}" != "false" ]]; then
+    render_consensus_config_from_env "$config_file"
   elif [[ ! -f "$config_file" ]]; then
-    if [[ -n "${CL_FROM_ENV:-true}" ]]; then
-      render_consensus_config_from_env "$config_file"
+    local template="${CL_CONFIG_TEMPLATE:-}"
+    if [[ -n "$template" && -f "$template" ]]; then
+      cp "$template" "$config_file"
     else
-      local template="${CL_CONFIG_TEMPLATE:-}"
-      if [[ -n "$template" && -f "$template" ]]; then
-        cp "$template" "$config_file"
-      else
-        echo "Missing consensus config at ${config_file}. Provide CL_CONFIG_YAML or CL_CONFIG_TEMPLATE." >&2
-        exit 1
-      fi
+      echo "Missing consensus config at ${config_file}. Provide CL_CONFIG_YAML or CL_CONFIG_TEMPLATE." >&2
+      exit 1
     fi
   fi
 
@@ -1037,33 +1025,6 @@ ensure_validator_materials() {
 prepare_dora_files() {
     local config_file="./.explorer/dora/config.yaml"
     ensure_directory "$(dirname "$config_file")"
-    # build endpoints với newlines thực
-    endpoints=""
-    # i=1
-    CL_RPC_URL_LIST=(
-        'http://34.180.107.231:3500'
-        'http://34.146.250.32:3500'
-        'http://34.180.81.197:3500'
-    )
-    # for url in $CL_RPC_URL_LIST; do
-    # endpoints+=$(printf '    - name: "local%d"\n      url: "%s"\n' "$i" "$url")
-    # i=$((i+1))
-    # done
-
-    endpoints=""
-    IFS=',' read -r -a arr <<< "$CL_RPC_URL_LIST"
-
-    endpoints=""
-    i=1
-    for url in "${arr[@]}"; do
-        endpoints+=$(printf '    - name: "local%d"\n      url: "%s"\n' "$i" "$url")
-        i=$((i+1))
-    done
-
-
-    # echo "Endpoints: ${CL_RPC_URL_LIST[0]}"
-    # echo "Endpoints: ${CL_RPC_URL_LIST[1]}"
-    # echo "Endpoints: ${CL_RPC_URL_LIST[2]}"
 
     cat >"$config_file"<<EOF
 logging:
