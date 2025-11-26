@@ -55,9 +55,9 @@ services:
       - --execution-jwt=/var/lib/lighthouse/beacon/ee-secret/jwtsecret
       - --testnet-dir=/var/lib/lighthouse/config
       - --disable-upnp
-      - --enr-tcp-port=9000
-      - --enr-udp-port=9000
-      - --port=9000
+      - --enr-tcp-port=${CL_P2P_PORT:-9000}
+      - --enr-udp-port=${CL_P2P_PORT:-9000}
+      - --port=${CL_P2P_PORT:-9000}
       - --listen-address=0.0.0.0
       - --enr-address=${NODE_IP}
       - --boot-nodes=${CL_BOOTNODE_ENR}

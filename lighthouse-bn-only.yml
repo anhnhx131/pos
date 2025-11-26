@@ -16,6 +16,8 @@ services:
       - --enable-enr-auto-update
       - --debug-level=trace
       - --listen-address=0.0.0.0
+      - --enr-port=${CL_BN_P2P_PORT:-9000}
+      - --port=${CL_BN_P2P_PORT:-9000}
       - --enr-address=${NODE_IP}
     volumes:
       - ./.eth/lighthouse/bootnode:/var/lib/lighthouse/bootnode
