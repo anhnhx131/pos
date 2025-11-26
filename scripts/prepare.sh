@@ -854,11 +854,6 @@ EOF
       jq_cmd="${jq_cmd} | .config.shanghaiTime = ${EL_SHANGHAI_TIME}"
     fi
 
-    # Add pragueTime if set
-    if [[ -n "${EL_PRAGUE_TIME:-}" ]]; then
-      jq_cmd="${jq_cmd} | .config.pragueTime = ${EL_PRAGUE_TIME}"
-    fi
-    
     # Add cancunTime if set
     if [[ -n "${EL_CANCUN_TIME:-}" ]]; then
       jq_cmd="${jq_cmd} | .config.cancunTime = ${EL_CANCUN_TIME}"
@@ -866,11 +861,15 @@ EOF
       jq_cmd="${jq_cmd} | .config.blobSchedule.cancun.target = ${EL_BLOB_CANCUN_TARGET}"
       jq_cmd="${jq_cmd} | .config.blobSchedule.cancun.max = ${EL_BLOB_CANCUN_MAX}"
       jq_cmd="${jq_cmd} | .config.blobSchedule.cancun.baseFeeUpdateFraction = ${EL_BLOB_CANCUN_BASE_FEE_UPDATE_FRACTION}"
-      
+    fi
+
+    # Add pragueTime if set
+    if [[ -n "${EL_PRAGUE_TIME:-}" ]]; then
+      jq_cmd="${jq_cmd} | .config.pragueTime = ${EL_PRAGUE_TIME}"
       # Add blobSchedule.prague if all prague blob configs are set
-      jq_cmd="${jq_cmd} | .config.blobSchedule.prague.target = ${EL_BLOB_PRAGUE_TARGET}"
-      jq_cmd="${jq_cmd} | .config.blobSchedule.prague.max = ${EL_BLOB_PRAGUE_MAX}"
-      jq_cmd="${jq_cmd} | .config.blobSchedule.prague.baseFeeUpdateFraction = ${EL_BLOB_PRAGUE_BASE_FEE_UPDATE_FRACTION}"
+        jq_cmd="${jq_cmd} | .config.blobSchedule.prague.target = ${EL_BLOB_PRAGUE_TARGET}"
+        jq_cmd="${jq_cmd} | .config.blobSchedule.prague.max = ${EL_BLOB_PRAGUE_MAX}"
+        jq_cmd="${jq_cmd} | .config.blobSchedule.prague.baseFeeUpdateFraction = ${EL_BLOB_PRAGUE_BASE_FEE_UPDATE_FRACTION}"
     fi
     
     # Apply jq transformations
