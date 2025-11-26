@@ -9,7 +9,7 @@ x-logging: &logging
 services:
   execution:
     restart: "unless-stopped"
-    image: ${GETH_DOCKER_REPO:-ethereum/client-go}:${GETH_DOCKER_TAG:-v1.11.6}
+    image: ${GETH_DOCKER_IMAGE:-ethereum/client-go:v1.11.6}
     environment:
       - JWT_SECRET=${JWT_SECRET:-}
       - LOG_LEVEL=${LOG_LEVEL:-info}
