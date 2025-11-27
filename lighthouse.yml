@@ -51,7 +51,7 @@ services:
       - --http-port=3500
       - --http-allow-origin=*
       - --execution-endpoint=${EL_NODE}
-      - --debug-level=debug
+      # - --debug-level=debug
       - --execution-jwt=/var/lib/lighthouse/beacon/ee-secret/jwtsecret
       - --testnet-dir=/var/lib/lighthouse/config
       - --disable-upnp
