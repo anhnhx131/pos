@@ -61,6 +61,7 @@ services:
       - --listen-address=0.0.0.0
       - --enr-address=${NODE_IP}
       - --boot-nodes=${CL_BOOTNODE_ENR}
+      - --genesis-state-url=${CL_GENESIS_STATE_URL}
     labels:
       - metrics.scrape=true
       - metrics.path=/metrics
