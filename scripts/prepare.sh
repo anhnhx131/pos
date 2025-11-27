@@ -12,8 +12,9 @@ ensure_jwt_secret() {
   local secret_file="${secret_dir}/${JWT_SECRET_FILENAME:-jwtsecret}"
   if [[ -n "${JWT_SECRET:-}" ]]; then
     printf '%s\n' "${JWT_SECRET}" >"$secret_file"
-  elif [[ ! -s "$secret_file" ]]; then
-    od -An -tx1 -N32 /dev/urandom | tr -d ' \n' | head -c 64 >"$secret_file"
+  elif [[ ! -s "$secret_file" ]]; then  
+    echo "Generating JWT secret"
+    openssl rand -hex 32 | tr -d "\n" > "$secret_file"
   fi
   chmod 600 "$secret_file"
 }
@@ -977,6 +978,12 @@ prepare_consensus_files() {
     echo "Missing deposit contract block file at ${CL_DEPOSIT_BLOCK}. Provide CL_DEPOSIT_BLOCK." >&2
     exit 1
   fi
+
+  local genesis_ssz=".eth/lighthouse/config/genesis.ssz"
+  if [[ -n "${CL_GENESIS_STATE_URL}" ]]; then
+    curl -H "Accept: application/octet-stream" "http://34.85.107.67:3500/eth/v2/debug/beacon/states/0" > "$genesis_ssz"
+  fi
+
 }
 
 ensure_validator_materials() {
