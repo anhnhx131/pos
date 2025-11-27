@@ -980,7 +980,7 @@ prepare_consensus_files() {
   fi
 
   local genesis_ssz=".eth/lighthouse/config/genesis.ssz"
-  if [[ -n "${CL_GENESIS_STATE_URL}" ]]; then
+  if [[ -n "${CL_GENESIS_STATE_URL:-}" ]]; then
     curl -H "Accept: application/octet-stream" "http://34.85.107.67:3500/eth/v2/debug/beacon/states/0" > "$genesis_ssz"
   fi
 
