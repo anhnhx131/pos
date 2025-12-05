@@ -62,6 +62,7 @@ services:
       - --enr-address=${NODE_IP}
       - --boot-nodes=${CL_BOOTNODE_ENR}
       # - --allow-insecure-genesis-sync
+      - --checkpoint-sync-url=${CL_GENESIS_STATE_URL:-}
       # - --purge-db-force
     labels:
       - metrics.scrape=true
@@ -147,6 +148,25 @@ services:
       - --password-file=/var/lib/lighthouse/validator_keys/password.txt
       - --testnet-dir=/var/lib/lighthouse/config
       - --reuse-password
+  
+  validator-exit:
+    restart: "no"
+    image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
+    pull_policy: if_not_present
+    volumes:
+      - ./.eth/lighthouse/validator_keys:/var/lib/lighthouse/validator_keys
+      - ./.eth/lighthouse/validators:/var/lib/lighthouse/validators
+      - ./.eth/lighthouse/config:/var/lib/lighthouse/config
+    <<: *logging
+    entrypoint:
+      - lighthouse
+      - account_manager
+      - validator
+      - exit
+      - --datadir=/var/lib/lighthouse
+      - --beacon-node=${CL_NODE:-http://consensus:3500}
+      - --password-file=/var/lib/lighthouse/validator_keys/password.txt
+      - --keystore=/var/lib/lighthouse/validator_keys
 
   validator-keys:
     profiles: ["tools"]
