@@ -849,11 +849,6 @@ EOF
     if [[ -n "${EL_SHANGHAI_TIME:-}" ]]; then
       jq_cmd="${jq_cmd} | .config.shanghaiTime = ${EL_SHANGHAI_TIME}"
     fi
-    
-    # Add shanghaiTime if set
-    if [[ -n "${EL_SHANGHAI_TIME:-}" ]]; then
-      jq_cmd="${jq_cmd} | .config.shanghaiTime = ${EL_SHANGHAI_TIME}"
-    fi
 
     # Add cancunTime if set
     if [[ -n "${EL_CANCUN_TIME:-}" ]]; then
