@@ -979,11 +979,11 @@ prepare_consensus_files() {
     exit 1
   fi
 
-  local genesis_ssz=".eth/lighthouse/config/genesis.ssz"
-  if [[ -n "${CL_GENESIS_STATE_URL:-}" ]]; then
-    echo "Downloading genesis state from ${CL_GENESIS_STATE_URL}"
-    curl -H "Accept: application/octet-stream" "${CL_GENESIS_STATE_URL}/eth/v2/debug/beacon/states/0" > "$genesis_ssz"
-  fi
+#   local genesis_ssz=".eth/lighthouse/config/genesis.ssz"
+#   if [[ -n "${CL_GENESIS_STATE_URL:-}" ]]; then
+#     echo "Downloading genesis state from ${CL_GENESIS_STATE_URL}"
+#     curl -H "Accept: application/octet-stream" "${CL_GENESIS_STATE_URL}/eth/v2/debug/beacon/states/0" > "$genesis_ssz"
+#   fi
 
 }
 

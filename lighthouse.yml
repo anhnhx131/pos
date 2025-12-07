@@ -16,20 +16,15 @@ services:
       - ./.eth/lighthouse/beacon:/var/lib/lighthouse/beacon
       - ./.eth/lighthouse/config:/var/lib/lighthouse/config
       - ./.eth/ee-secret:/var/lib/lighthouse/beacon/ee-secret
+      - ./lighthouse/docker-entrypoint.sh:/docker-entrypoint.sh:ro
       - /etc/localtime:/etc/localtime:ro
     environment:
-      - CHECKPOINT_SYNC_URL=${CHECKPOINT_SYNC_URL}
-      - JWT_SECRET=${JWT_SECRET}
-      - MEV_BOOST=${MEV_BOOST}
-      - MEV_NODE=${MEV_NODE}
-      - BEACON_STATS_API=${BEACON_STATS_API}
-      - BEACON_STATS_MACHINE=${BEACON_STATS_MACHINE}
+      - EL_NODE=${EL_NODE}
+      - NODE_IP=${NODE_IP}
+      - CL_BOOTNODE_ENR=${CL_BOOTNODE_ENR}
+      - CL_GENESIS_STATE_URL=${CL_GENESIS_STATE_URL}
       - CL_EXTRAS=${CL_EXTRAS:-}
-      - ARCHIVE_NODE=${CL_ARCHIVE_NODE:-false}
-      - CL_TESTNET_DIR=${CL_TESTNET_DIR:-/config}
-      - IPV6=${IPV6:-false}
       - CL_P2P_PORT=${CL_P2P_PORT:-9000}
-      - CL_QUIC_PORT=${CL_QUIC_PORT:-9001}
       - NETWORK=${NETWORK}
     ports:
       - ${HOST_IP:-}:${CL_P2P_PORT:-9000}:${CL_P2P_PORT:-9000}/tcp
@@ -43,6 +38,7 @@ services:
           - ${CL_ALIAS:-default-consensus}
     <<: *logging
     entrypoint:
+      - /docker-entrypoint.sh
       - lighthouse
       - beacon_node
       - --datadir=/var/lib/lighthouse/beacon
@@ -60,36 +56,28 @@ services:
       - --port=${CL_P2P_PORT:-9000}
       - --listen-address=0.0.0.0
       - --enr-address=${NODE_IP}
-      - --boot-nodes=${CL_BOOTNODE_ENR}
       # - --allow-insecure-genesis-sync
-      - --checkpoint-sync-url=${CL_GENESIS_STATE_URL:-}
       # - --purge-db-force
-    labels:
-      - metrics.scrape=true
-      - metrics.path=/metrics
-      - metrics.port=8008
-      - metrics.instance=consensus
-      - metrics.network=${NETWORK}
 
   validator:
     restart: "unless-stopped"
     image: ${LH_IMAGE:-sigp/lighthouse:v7.0.1}
     pull_policy: if_not_present
     environment:
+      - CL_NODE=${CL_NODE:-http://consensus:3500}
       - MEV_BOOST=${MEV_BOOST}
       - MEV_BUILD_FACTOR=${MEV_BUILD_FACTOR}
-      - BEACON_STATS_API=${BEACON_STATS_API}
-      - BEACON_STATS_MACHINE=${BEACON_STATS_MACHINE}
+      - MEV_NODE=${MEV_NODE}
       - DOPPELGANGER=${DOPPELGANGER}
       - VC_EXTRAS=${VC_EXTRAS:-}
       - GRAFFITI=${GRAFFITI:-}
       - DEFAULT_GRAFFITI=${DEFAULT_GRAFFITI:-false}
       - NETWORK=${NETWORK}
       - ENABLE_DIST_ATTESTATION_AGGR=${ENABLE_DIST_ATTESTATION_AGGR:-false}
-      - CL_TESTNET_DIR=${CL_TESTNET_DIR:-/config}
     volumes:
       - ./.eth/lighthouse/config:/var/lib/lighthouse/config
       - ./.eth/lighthouse/validators:/var/lib/lighthouse/validators
+      - ./lighthouse/docker-entrypoint-vc.sh:/docker-entrypoint-vc.sh:ro
       - /etc/localtime:/etc/localtime:ro
     networks:
       default:
@@ -97,6 +85,8 @@ services:
           - ${VC_ALIAS:-vc}
     <<: *logging
     entrypoint:
+      # - /bin/sh
+      - /docker-entrypoint-vc.sh
       - lighthouse
       - validator_client
       - --beacon-nodes=${CL_NODE:-http://consensus:3500}
@@ -113,18 +103,6 @@ services:
         condition: service_started
       validator-import:
         condition: service_completed_successfully
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.${VC_HOST:-vc}.service=${VC_HOST:-vc}
-      - traefik.http.routers.${VC_HOST:-vc}.entrypoints=websecure
-      - traefik.http.routers.${VC_HOST:-vc}.rule=Host(`${VC_HOST:-vc}.${DOMAIN}`)
-      - traefik.http.routers.${VC_HOST:-vc}.tls.certresolver=letsencrypt
-      - traefik.http.services.${VC_HOST:-vc}.loadbalancer.server.port=${KEY_API_PORT:-7500}
-      - metrics.scrape=true
-      - metrics.path=/metrics
-      - metrics.port=8009
-      - metrics.instance=validator
-      - metrics.network=${NETWORK}
 
   validator-import:
     restart: "no"
