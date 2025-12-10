@@ -1028,7 +1028,7 @@ chain:
 # HTTP Server configuration
 server:
   host: "0.0.0.0" # Address to listen on
-  port: "8080" # Port to listen on
+  port: "80" # Port to listen on
 
 frontend:
   enabled: true # Enable or disable to web frontend

@@ -10,7 +10,7 @@ x-blockscout-env: &blockscout-env
   ETHEREUM_JSONRPC_VARIANT: geth
   ETHEREUM_JSONRPC_HTTP_URL: ${BLOCKSCOUT_EL_RPC_URL:-http://execution:8545}
   ETHEREUM_JSONRPC_TRACE_URL: ${BLOCKSCOUT_TRACE_URL:-http://execution:8545}
-  BLOCK_TRANSFORMER: clique
+  BLOCK_TRANSFORMER: ${BLOCKSCOUT_BLOCK_TRANSFORMER:-clique}
   SECRET_KEY_BASE: ${BLOCKSCOUT_SECRET_KEY_BASE:-}
   DISABLE_EXCHANGE_RATES: true
   MICROSERVICE_SC_VERIFIER_ENABLED: true
@@ -86,7 +86,7 @@ services:
       STATS__RUN_MIGRATIONS: "true"
 
   blockscout-frontend:
-    image: ${BLOCKSCOUT_FRONTEND_IMAGE:-ghcr.io/blockscout/frontend:v2.3.5}
+    image: ${BLOCKSCOUT_FRONTEND_IMAGE:-ghcr.io/blockscout/frontend:v2.3.0}
     restart: unless-stopped
     depends_on:
       blockscout:
