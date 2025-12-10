@@ -22,6 +22,8 @@ Commands:
   beacon-vc        Start execution + beacon node + validator client
   import-keys  Materialize validator key/password files & run import job
   dora         Start dora explorer
+  blockscout   Start blockscout explorer stack
+  validator-exit Exit validator client
   build        Build images defined in the compose files
   down         Stop and remove the running stack
 
@@ -112,10 +114,18 @@ main() {
       prepare_dora_files
       compose up -d dora
       ;;
+    blockscout)
+      # Blockscout explorer stack (requires execution RPC reachable at BLOCKSCOUT_EL_RPC_URL)
+      prepare_stack
+      compose up -d blockscout-db blockscout blockscout-stats-db blockscout-stats blockscout-frontend blockscout-proxy
+      ;;
     import-keys)
       prepare_stack
       ensure_validator_materials
       compose run --rm validator-import
+      ;;
+    validator-exit)
+      compose exec validator-exit
       ;;
     build)
       compose build

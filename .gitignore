@@ -9,3 +9,4 @@ deposit.sh
 .eth/*
 interact-eth1/*
 .explorer/*
+draft/*

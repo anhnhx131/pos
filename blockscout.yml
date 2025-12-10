@@ -1,0 +1,137 @@
+version: "3.8"
+
+x-blockscout-env: &blockscout-env
+  PORT: ${BLOCKSCOUT_PORT:-4000}
+  ECTO_USE_SSL: false
+  SUBNETWORK: ${BLOCKSCOUT_SUBNETWORK:-Block}
+  NETWORK: ${BLOCKSCOUT_NETWORK_NAME:-}
+  API_V2_ENABLED: true
+  DATABASE_URL: postgresql://${BLOCKSCOUT_DB_USER:-postgres}:${BLOCKSCOUT_DB_PASSWORD:-}@blockscout-db:5432/${BLOCKSCOUT_DB_NAME:-explorer}?ssl=false
+  ETHEREUM_JSONRPC_VARIANT: geth
+  ETHEREUM_JSONRPC_HTTP_URL: ${BLOCKSCOUT_EL_RPC_URL:-http://execution:8545}
+  ETHEREUM_JSONRPC_TRACE_URL: ${BLOCKSCOUT_TRACE_URL:-http://execution:8545}
+  BLOCK_TRANSFORMER: clique
+  SECRET_KEY_BASE: ${BLOCKSCOUT_SECRET_KEY_BASE:-}
+  DISABLE_EXCHANGE_RATES: true
+  MICROSERVICE_SC_VERIFIER_ENABLED: true
+  RE_CAPTCHA_SECRET_KEY: ${BLOCKSCOUT_RECAPTCHA_SECRET:-}
+  RE_CAPTCHA_CLIENT_KEY: ${BLOCKSCOUT_RECAPTCHA_SITE_KEY:-}
+  RE_CAPTCHA_CHECK_HOSTNAME: false
+  MICROSERVICE_SC_VERIFIER_TYPE: eth_bytecode_db
+  RE_CAPTCHA_GUIDELINE_URL: https://developers.google.com/recaptcha/docs/v3
+  COIN_NAME: ${BLOCKSCOUT_COIN_NAME:-ETH}
+  SOLIDITYSCAN_CHAIN_ID: ${BLOCKSCOUT_SOLIDITYSCAN_CHAIN_ID:-}
+  SOLIDITYSCAN_API_TOKEN: ${BLOCKSCOUT_SOLIDITYSCAN_API_TOKEN:-}
+  MICROSERVICE_VISUALIZE_SOL2UML_ENABLED: true
+
+services:
+  blockscout-db:
+    image: ${BLOCKSCOUT_POSTGRES_IMAGE:-postgres:15}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${BLOCKSCOUT_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${BLOCKSCOUT_DB_PASSWORD:-}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - ./.blockscout/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${BLOCKSCOUT_DB_USER:-postgres} -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  blockscout:
+    image: ${BLOCKSCOUT_IMAGE:-ghcr.io/blockscout/blockscout:9.0.2}
+    restart: unless-stopped
+    depends_on:
+      blockscout-db:
+        condition: service_healthy
+    entrypoint: ["/docker-entrypoint.sh"]
+    environment:
+      <<: *blockscout-env
+    volumes:
+      - ./blockscout/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+    networks:
+      default:
+        aliases:
+          - blockscout
+
+  blockscout-stats-db:
+    image: ${BLOCKSCOUT_POSTGRES_IMAGE:-postgres:15}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${BLOCKSCOUT_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${BLOCKSCOUT_DB_PASSWORD:-}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - ./.blockscout/stats/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${BLOCKSCOUT_DB_USER:-postgres} -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  blockscout-stats:
+    image: ${BLOCKSCOUT_STATS_IMAGE:-ghcr.io/blockscout/stats:v1.5.2}
+    restart: unless-stopped
+    depends_on:
+      blockscout-stats-db:
+        condition: service_healthy
+      blockscout-db:
+        condition: service_healthy
+    environment:
+      STATS__DB_URL: postgresql://${BLOCKSCOUT_DB_USER:-postgres}:${BLOCKSCOUT_DB_PASSWORD:-}@blockscout-stats-db:5432/${BLOCKSCOUT_STATS_DB_NAME:-stats}?ssl=false
+      STATS__BLOCKSCOUT_DB_URL: postgresql://${BLOCKSCOUT_DB_USER:-postgres}:${BLOCKSCOUT_DB_PASSWORD:-}@blockscout-db:5432/${BLOCKSCOUT_DB_NAME:-explorer}?ssl=false
+      STATS__CREATE_DATABASE: "true"
+      STATS__RUN_MIGRATIONS: "true"
+
+  blockscout-frontend:
+    image: ${BLOCKSCOUT_FRONTEND_IMAGE:-ghcr.io/blockscout/frontend:v2.3.5}
+    restart: unless-stopped
+    depends_on:
+      blockscout:
+        condition: service_started
+    environment:
+      NEXT_PUBLIC_NETWORK_ID: ${BLOCKSCOUT_NETWORK_ID:-}
+      NEXT_PUBLIC_NETWORK_NAME: ${BLOCKSCOUT_NETWORK_NAME:-}
+      NEXT_PUBLIC_RE_CAPTCHA_APP_SITE_KEY: ${BLOCKSCOUT_RECAPTCHA_SITE_KEY:-}
+      NEXT_PUBLIC_AD_BANNER_PROVIDER: none
+      NEXT_PUBLIC_AD_TEXT_PROVIDER: none
+      NEXT_PUBLIC_HOMEPAGE_CHARTS: ${BLOCKSCOUT_HOMEPAGE_CHARTS:-['daily_txs']}
+      NEXT_PUBLIC_GAS_TRACKER_UNITS: ${BLOCKSCOUT_GAS_TRACKER_UNITS:-['gwei']}
+      NEXT_PUBLIC_NETWORK_CURRENCY_NAME: ${BLOCKSCOUT_NETWORK_CURRENCY_NAME:-Ether}
+      NEXT_PUBLIC_NETWORK_CURRENCY_SYMBOL: ${BLOCKSCOUT_NETWORK_CURRENCY_SYMBOL:-ETH}
+      NEXT_PUBLIC_API_HOST: ${BLOCKSCOUT_PUBLIC_HOST:-localhost}
+      NEXT_PUBLIC_API_PROTOCOL: ${BLOCKSCOUT_PUBLIC_PROTOCOL:-http}
+      NEXT_PUBLIC_APP_HOST: ${BLOCKSCOUT_PUBLIC_HOST:-localhost}
+      NEXT_PUBLIC_VISUALIZE_API_HOST: ${BLOCKSCOUT_VISUALIZE_API_HOST:-http://localhost}
+      NEXT_PUBLIC_STATS_API_HOST: ${BLOCKSCOUT_STATS_API_HOST:-http://localhost}
+      NEXT_PUBLIC_STATS_API_BASE_PATH: ${BLOCKSCOUT_STATS_API_BASE_PATH:-/services/stats}
+      NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID: ${BLOCKSCOUT_WALLET_CONNECT_PROJECT_ID:-}
+      NEXT_PUBLIC_VIEWS_CONTRACT_SOLIDITYSCAN_ENABLED: ${BLOCKSCOUT_VIEWS_CONTRACT_SOLIDITYSCAN_ENABLED:-false}
+      NEXT_PUBLIC_VALIDATORS_CHAIN_TYPE: ${BLOCKSCOUT_VALIDATORS_CHAIN_TYPE:-stability}
+      NEXT_PUBLIC_HAS_BEACON_CHAIN: ${BLOCKSCOUT_HAS_BEACON_CHAIN:-true}
+      NEXT_PUBLIC_BEACON_CHAIN_VALIDATOR_URL_TEMPLATE: ${BLOCKSCOUT_BEACON_VALIDATORS_URL:-}
+    networks:
+      default:
+        aliases:
+          - blockscout-frontend
+
+  blockscout-proxy:
+    image: nginx:1.25
+    restart: unless-stopped
+    depends_on:
+      blockscout:
+        condition: service_started
+      blockscout-frontend:
+        condition: service_started
+      blockscout-stats:
+        condition: service_started
+    ports:
+      - ${BLOCKSCOUT_PROXY_PORT:-80}:80
+    environment:
+      BACK_PROXY_PASS: http://blockscout:4000
+      FRONT_PROXY_PASS: http://blockscout-frontend:3000
+      STATS_PROXY_PASS: http://blockscout-stats:8050
+    volumes:
+      - ./blockscout/nginx:/etc/nginx/templates:ro

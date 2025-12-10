@@ -1,0 +1,42 @@
+#!/usr/bin/env sh
+set -euo pipefail
+
+DATABASE_URL="${DATABASE_URL:-}"
+if [ -z "$DATABASE_URL" ]; then
+  echo "DATABASE_URL is required for Blockscout." >&2
+  exit 1
+fi
+
+if [ -z "${SECRET_KEY_BASE:-}" ]; then
+  SECRET_KEY_BASE="$(openssl rand -hex 64)"
+  export SECRET_KEY_BASE
+fi
+
+db_query=""
+case "$DATABASE_URL" in
+  *\?*)
+    db_query="?${DATABASE_URL#*\?}"
+    ;;
+esac
+db_host_part="${DATABASE_URL%%\?*}"
+db_host_part="${db_host_part%/*}"
+ready_url="${db_host_part}/postgres${db_query}"
+
+echo "Waiting for database host using ${ready_url}..."
+for _ in $(seq 1 30); do
+  if psql "$ready_url" -c 'select 1' >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+
+if ! psql "$ready_url" -c 'select 1' >/dev/null 2>&1; then
+  echo "Database host is not reachable after waiting, exiting." >&2
+  exit 1
+fi
+
+echo "Running Blockscout migrations..."
+bin/blockscout eval "Elixir.Explorer.ReleaseTasks.create_and_migrate()"
+
+echo "Starting Blockscout..."
+exec bin/blockscout start
