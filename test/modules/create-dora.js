@@ -12,7 +12,7 @@ import {
 } from '../lib/gcpHelpers.js';
 import {DEFAULT_REMOTE_ENV} from '../config/defaultRemoteEnv.js';
 
-const DORA_NODE_TCP_PORTS = [22, 8080];
+const DORA_NODE_TCP_PORTS = [22, 8080, 80];
 const DORA_NODE_UDP_PORTS = [];
 
 function buildDoraStartupScript({envOverrides = {}}) {
