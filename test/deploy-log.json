@@ -1,0 +1,20 @@
+{
+  "createdAt": "2025-12-09T01:46:41.131Z",
+  "steps": {
+    "initPoa": {
+      "cliqueIp": "136.110.76.160",
+      "cliqueEnode": "enode://b30eb9eb5155c7a23b3e0041923c191b30593132f6250e49023237aa830f2cec764c33f24b12096bb707929911de35c6dd63d86d4a873ff3836fb310c16dee00@136.110.76.160:30303"
+    },
+    "initBootnode": {
+      "bootnodeIp": "34.84.115.59",
+      "bootnodeEnr": "enr:-IS4QBJigWYtuuegp7dhNVBgbeHx9v_gooYqqrUJggC12oWxUCuXWKJHaAd2u0WQ7aO4NzhSlB2YlzY-t2TgP9qM2_0BgmlkgnY0gmlwhCJUczuJc2VjcDI1NmsxoQI-sp-9igPfYbDA9S9Te2B6mMdo5T_0n2JY0TJo3buN1YN1ZHCCIyg"
+    },
+    "initBeacon": {
+      "beaconIp": "34.180.124.231",
+      "beaconEnode": "enode://0c284ba5ce93c5879aa2f0f6132fe19e0278d32b38c4eef8b3da8e3bdba743e02732bf542e5cb282b857dc2ae278cac5c383fc37d66b014f1ae1e183045a41ea@34.180.124.231:30303"
+    },
+    "dora": {
+      "doraIp": "35.243.77.159"
+    }
+  }
+}

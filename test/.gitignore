@@ -1,0 +1,8 @@
+node_modules/
+pos/
+*.log
+.env
+.DS_Store
+gcp-service-key.json
+.ssh/
+data/*

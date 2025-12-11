@@ -1,7 +1,6 @@
 cl/*
 el/*  
 interact-eth1/*
-test/*
 deposit.sh
 .env
 .env.bootnode
