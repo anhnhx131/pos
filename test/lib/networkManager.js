@@ -79,27 +79,46 @@ function buildContextFromNetwork(network) {
     context.envOverrides.beacon = {};
   }
   
-  // Apply CL configs to bootnode and beacon (support both old and new structure)
-  const depositContract = cl.depositContractAddress || config.clDepositContractAddress;
-  const minGenesis = cl.minGenesisActiveValidatorCount !== undefined ? cl.minGenesisActiveValidatorCount : config.clMinGenesisActiveValidatorCount;
-  const depositBlock = cl.depositBlock !== undefined ? cl.depositBlock : config.clDepositBlock;
-  const genesisStateUrl = cl.genesisStateUrl || config.clGenesisStateUrl;
+  // Apply CL configs to bootnode and beacon (using env var names directly)
+  // First, apply all CL_ prefixed configs from config.cl (new structure)
+  Object.keys(cl).forEach(key => {
+    if (key.startsWith('CL_')) {
+      const value = cl[key];
+      if (value !== undefined && value !== null && value !== '') {
+        context.envOverrides.bootnode[key] = String(value);
+        context.envOverrides.beacon[key] = String(value);
+      }
+    }
+  });
   
-  if (depositContract) {
-    context.envOverrides.bootnode.CL_DEPOSIT_CONTRACT_ADDRESS = depositContract;
-    context.envOverrides.beacon.CL_DEPOSIT_CONTRACT_ADDRESS = depositContract;
+  // Backward compatibility: fallback to old mapped keys if env var names not set
+  if (!context.envOverrides.bootnode.CL_DEPOSIT_CONTRACT_ADDRESS) {
+    const depositContract = cl.depositContractAddress || config.clDepositContractAddress;
+    if (depositContract) {
+      context.envOverrides.bootnode.CL_DEPOSIT_CONTRACT_ADDRESS = depositContract;
+      context.envOverrides.beacon.CL_DEPOSIT_CONTRACT_ADDRESS = depositContract;
+    }
   }
-  if (minGenesis !== undefined) {
-    context.envOverrides.bootnode.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT = String(minGenesis);
-    context.envOverrides.beacon.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT = String(minGenesis);
+  if (!context.envOverrides.bootnode.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT) {
+    const minGenesis = cl.minGenesisActiveValidatorCount !== undefined ? cl.minGenesisActiveValidatorCount : config.clMinGenesisActiveValidatorCount;
+    if (minGenesis !== undefined) {
+      context.envOverrides.bootnode.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT = String(minGenesis);
+      context.envOverrides.beacon.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT = String(minGenesis);
+    }
   }
-  if (depositBlock !== undefined) {
-    context.envOverrides.bootnode.CL_DEPOSIT_BLOCK = String(depositBlock);
-    context.envOverrides.beacon.CL_DEPOSIT_BLOCK = String(depositBlock);
+  if (!context.envOverrides.bootnode.CL_DEPOSIT_BLOCK) {
+    const depositBlock = cl.depositBlock !== undefined ? cl.depositBlock : config.clDepositBlock;
+    if (depositBlock !== undefined) {
+      context.envOverrides.bootnode.CL_DEPOSIT_BLOCK = String(depositBlock);
+      context.envOverrides.beacon.CL_DEPOSIT_BLOCK = String(depositBlock);
+    }
   }
-  if (genesisStateUrl) {
-    context.envOverrides.bootnode.CL_GENESIS_STATE_URL = genesisStateUrl;
-    context.envOverrides.beacon.CL_GENESIS_STATE_URL = genesisStateUrl;
+  if (!context.envOverrides.bootnode.CL_GENESIS_STATE_URL) {
+    const genesisStateUrl = cl.genesisStateUrl || config.clGenesisStateUrl;
+    if (genesisStateUrl) {
+      context.envOverrides.bootnode.CL_GENESIS_STATE_URL = genesisStateUrl;
+      context.envOverrides.beacon.CL_GENESIS_STATE_URL = genesisStateUrl;
+    }
   }
   
   return context;
