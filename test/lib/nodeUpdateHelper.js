@@ -296,3 +296,56 @@ export async function updateClique(sshConfig, nodeInfo, envUpdates) {
     console.log(`[updateClique] ✓ Completed`);
   });
 }
+
+/**
+ * Update blockscout: update .env.joc, git pull, restart
+ */
+export async function updateBlockscout(sshConfig, nodeInfo, envUpdates) {
+  const {name, ip} = nodeInfo;
+  console.log(`\n[updateBlockscout] Updating ${name} at ${ip}...`);
+
+  return withSshConnection(sshConfig, async (ssh) => {
+    const envPath = '/data/pos/.env.joc';
+
+    // 1. Update .env file
+    console.log(`[updateBlockscout] Reading current .env file...`);
+    let currentEnvContent = await readRemoteEnvFile(ssh, envPath);
+    if (!currentEnvContent) {
+      currentEnvContent = await readRemoteEnvFile(ssh, '/data/pos/default.env') || '';
+    }
+
+    const currentEnv = parseEnvFile(currentEnvContent);
+    const updatedEnv = {...currentEnv, ...envUpdates};
+
+    // Preserve NODE_IP
+    if (currentEnv.NODE_IP) {
+      updatedEnv.NODE_IP = currentEnv.NODE_IP;
+    }
+
+    // Replace NODE_IP placeholder if present in any value
+    const nodeIp = currentEnv.NODE_IP || ip;
+    Object.keys(updatedEnv).forEach(key => {
+      if (typeof updatedEnv[key] === 'string' && updatedEnv[key].includes('${NODE_IP}')) {
+        updatedEnv[key] = updatedEnv[key].replace(/\${NODE_IP}/g, nodeIp);
+      }
+    });
+
+    console.log(`[updateBlockscout] Writing updated .env file...`);
+    await writeRemoteEnvFile(ssh, envPath, envObjectToString(updatedEnv));
+
+    // 2. Git pull latest code
+    console.log(`[updateBlockscout] Pulling latest code...`);
+    await ssh.exec('cd /data/pos && sudo git pull origin eth-docker 2>&1 || sudo git pull 2>&1');
+
+    // 3. Stop current services
+    console.log(`[updateBlockscout] Stopping current services...`);
+    await ssh.exec('cd /data/pos && sudo ./start.sh down 2>&1 || true');
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    // 4. Start blockscout
+    console.log(`[updateBlockscout] Starting blockscout...`);
+    await ssh.exec('cd /data/pos && sudo ./start.sh blockscout .env.joc 2>&1');
+
+    console.log(`[updateBlockscout] ✓ Completed`);
+  });
+}

@@ -47,6 +47,9 @@ import {
 // GCP helpers
 import {loadDeploymentContext} from './lib/gcpHelpers.js';
 
+// External dependencies
+import axios from 'axios';
+
 /**
  * Main menu
  */
@@ -67,21 +70,49 @@ async function showMainMenu() {
     'List networks',
     'Switch network',
     'View network details',
+    'Exit',
+  ];
+
+  return await select('Main Menu', options);
+}
+
+/**
+ * Network-specific menu (shown after switching to a network)
+ */
+async function showNetworkMenu() {
+  const currentNetwork = getCurrentNetwork();
+  if (!currentNetwork) {
+    console.log('No network selected. Please switch to a network first.');
+    await waitForEnter();
+    return;
+  }
+
+  separator();
+  console.log(`  Network: ${currentNetwork}`);
+  separator();
+  const status = getNetworkStatus(currentNetwork);
+  console.log(`Status: ${status.status} | Progress: ${status.progress}`);
+  console.log();
+
+  const options = [
+    'View network details',
     'Manage network config',
     'Prepare CL config',
+    'Manage network steps',
+    'Add execution node',
     'Add bootnode',
     'Add beacon node',
     'Add validator node',
     'Create blockscout',
     'Create dora',
     'Update CL config',
-    'Update blockscout RPC',
+    'Update blockscout',
     'Update fork (beacon & validator)',
     'Delete network',
-    'Exit',
+    'Back to main menu',
   ];
 
-  return await select('Main Menu', options);
+  return await select('Network Menu', options);
 }
 
 /**
@@ -159,7 +190,7 @@ async function createNewNetwork() {
   displayKeyValue(config.el);
   console.log('\nNote: CL config will be asked when creating bootnode/beacon/validator nodes');
 
-  const confirmed = await confirm('\nCreate network with these settings?');
+  const confirmed = await confirm('\nCreate network with these settings?', true);
   if (!confirmed) {
     console.log('Cancelled');
     return;
@@ -169,7 +200,7 @@ async function createNewNetwork() {
   console.log(`\nNetwork "${name}" created successfully!`);
 
   // Ask if user wants to set as current
-  const setCurrent = await confirm('Set as current network?');
+  const setCurrent = await confirm('Set as current network?', true);
   if (setCurrent) {
     setCurrentNetwork(name);
     console.log(`Network "${name}" is now current`);
@@ -226,7 +257,7 @@ async function listNetworks() {
 }
 
 /**
- * Switch current network
+ * Switch current network and enter network menu
  */
 async function switchNetwork() {
   sectionHeader('Switch Network');
@@ -247,23 +278,97 @@ async function switchNetwork() {
   const selected = await select('Select network to switch to', options);
   setCurrentNetwork(selected);
   console.log(`\nSwitched to network: ${selected}`);
-  await waitForEnter();
+  
+  // Enter network menu
+  await networkMenu();
 }
 
 /**
- * View network details
+ * Network menu loop
+ */
+async function networkMenu() {
+  while (true) {
+    try {
+      const choice = await showNetworkMenu();
+
+      switch (choice) {
+        case 'View network details':
+          await viewNetworkDetails();
+          break;
+        case 'Manage network config':
+          await manageNetworkConfigMenu();
+          break;
+        case 'Prepare CL config':
+          await prepareClConfigMenu();
+          break;
+        case 'Manage network steps':
+          await manageNetworkSteps();
+          break;
+        case 'Add execution node':
+          await addExecutionNodeMenu();
+          break;
+        case 'Add bootnode':
+          await addBootnodeMenu();
+          break;
+        case 'Add beacon node':
+          await addBeaconNodeMenu();
+          break;
+        case 'Add validator node':
+          await addValidatorNodeMenu();
+          break;
+        case 'Create blockscout':
+          await createBlockscoutMenu();
+          break;
+        case 'Create dora':
+          await createDoraMenu();
+          break;
+        case 'Update CL config':
+          await updateClConfigMenu();
+          break;
+        case 'Update blockscout':
+          await updateBlockscoutMenu();
+          break;
+        case 'Update fork (beacon & validator)':
+          await updateForkMenu();
+          break;
+        case 'Delete network':
+          await deleteNetworkMenu();
+          break;
+        case 'Back to main menu':
+          return;
+        default:
+          console.log('Invalid choice');
+      }
+      console.clear();
+    } catch (error) {
+      if (error.message === 'Invalid selection' || error.message.includes('Cancelled')) {
+        continue;
+      }
+      console.error('\nError:', error.message);
+      await waitForEnter();
+      console.clear();
+    }
+  }
+}
+
+/**
+ * View network details (can be called from main menu or network menu)
  */
 async function viewNetworkDetails() {
-  sectionHeader('Network Details');
-
-  const networkNames = listNetworkNames();
-  if (networkNames.length === 0) {
-    console.log('No networks available');
-    await waitForEnter();
-    return;
+  let selected = getCurrentNetwork();
+  
+  // If called from main menu and no current network, allow selection
+  if (!selected) {
+    const networkNames = listNetworkNames();
+    if (networkNames.length === 0) {
+      console.log('No networks available');
+      await waitForEnter();
+      return;
+    }
+    selected = await select('Select network to view', networkNames);
   }
 
-  const selected = await select('Select network to view', networkNames);
+  sectionHeader(`Network Details: ${selected}`);
   const status = getNetworkStatus(selected);
   const network = getNetwork(selected);
 
@@ -321,26 +426,20 @@ async function viewNetworkDetails() {
  * Manage network steps
  */
 async function manageNetworkSteps() {
-  sectionHeader('Manage Network Steps');
-
-  const networkNames = listNetworkNames();
-  if (networkNames.length === 0) {
-    console.log('No networks available');
+  const selected = getCurrentNetwork();
+  if (!selected) {
+    console.log('No network selected');
     await waitForEnter();
     return;
   }
 
-  const selected = await select('Select network', networkNames);
+  sectionHeader(`Manage Network Steps: ${selected}`);
   const network = getNetwork(selected);
 
   const stepOptions = [
     {label: 'Init POA', value: 'initPoa', func: executeInitPoa},
-    {label: 'Create Blockscout', value: 'createBlockscout', func: executeCreateBlockscout},
-    {label: 'Update Blockscout RPC', value: 'updateBlockscout', func: null},
     {label: 'Init Bootnode', value: 'initBootnode', func: executeInitBootnode},
-    {label: 'Init Beacon', value: 'initBeacon', func: executeInitBeacon},
-    {label: 'Create Dora', value: 'createDora', func: executeCreateDora},
-    {label: 'Initial Flow (POA + Blockscout)', value: 'initialFlow', func: null},
+    {label: 'Initial Flow (POA only)', value: 'initialFlow', func: null},
     {label: 'Back to main menu', value: 'back', func: null},
   ];
 
@@ -357,10 +456,10 @@ async function manageNetworkSteps() {
     if (action === 'initialFlow') {
       console.log('\nInitial Flow will create:');
       console.log('  1. POA/Clique node');
-      console.log('  2. Blockscout explorer');
-      console.log('\nAfter this, you can deploy deposit contract, then create bootnode, beacon, dora, and validators.');
+      console.log('\nAfter this, you can deploy deposit contract, then create bootnode, beacon bootnode, and validators.');
+      console.log('You can also create Blockscout or Dora explorers from the main menu.');
 
-      const confirmed = await confirm('\nProceed with initial flow?');
+      const confirmed = await confirm('\nProceed with initial flow?', true);
       if (confirmed) {
         try {
           await executeInitialFlow(selected);
@@ -373,6 +472,8 @@ async function manageNetworkSteps() {
       continue;
     }
 
+
+    // Handle updateBlockscout (not a step, but menu item)
     if (action === 'updateBlockscout') {
       const poaStep = network.steps.initPoa;
       const cliqueRpc = poaStep.status === 'completed' && poaStep.data ? `http://${poaStep.data.cliqueIp}:8545` : '';
@@ -406,11 +507,14 @@ async function manageNetworkSteps() {
       const el = config.el || {};
       const networkIdDefault = elExplorer.networkId || el.networkId || config.networkId || 84;
       const networkNameDefault = elExplorer.networkName || el.networkName || config.networkName || `${selected} Network`;
+      const blockTransformerDefault = elExplorer.blockTransformer || 'clique';
 
       const networkIdInput = await prompt(`Network ID [${networkIdDefault}]: `);
       const networkNameInput = await prompt(`Network Name [${networkNameDefault}]: `);
+      const blockTransformerInput = await prompt(`Block Transformer (e.g., clique, base, optimism) [${blockTransformerDefault}]: `);
+      const blockTransformer = blockTransformerInput || blockTransformerDefault;
 
-      const confirmed = await confirm('\nProceed with updating Blockscout?');
+      const confirmed = await confirm('\nProceed with updating Blockscout?', true);
       if (!confirmed) {
         continue;
       }
@@ -419,6 +523,7 @@ async function manageNetworkSteps() {
         await executeUpdateBlockscout(
           selected,
           newRpc,
+          blockTransformer,
           networkIdInput ? Number(networkIdInput) : networkIdDefault,
           networkNameInput || networkNameDefault,
         );
@@ -431,16 +536,14 @@ async function manageNetworkSteps() {
     }
 
     // Handle steps that may need additional parameters
-    if (action === 'initBootnode' || action === 'initBeacon' || action === 'createDora') {
+    if (action === 'initBootnode' || action === 'initBeaconBootnode') {
       const poaStep = network.steps.initPoa;
       const bootnodeStep = network.steps.initBootnode;
       
       let poaEnode = null;
       let bootnodeEnr = null;
-      let clRpcUrl = null;
-      let elRpcUrl = null;
 
-      if (action === 'initBootnode' || action === 'initBeacon') {
+      if (action === 'initBootnode') {
         if (poaStep.status !== 'completed' || !poaStep.data) {
           console.log('\nPOA enode is required. Please provide:');
           poaEnode = await prompt('POA ENODE: ');
@@ -452,26 +555,21 @@ async function manageNetworkSteps() {
         }
       }
 
-      if (action === 'initBeacon') {
+      if (action === 'initBeaconBootnode') {
+        if (poaStep.status !== 'completed' || !poaStep.data) {
+          console.log('\nPOA enode is required. Please provide:');
+          poaEnode = await prompt('POA ENODE: ');
+          if (!poaEnode) {
+            console.log('POA ENODE is required');
+            await waitForEnter();
+            continue;
+          }
+        }
         if (bootnodeStep.status !== 'completed' || !bootnodeStep.data) {
           console.log('\nBootnode ENR is required. Please provide:');
           bootnodeEnr = await prompt('Bootnode ENR: ');
           if (!bootnodeEnr) {
             console.log('Bootnode ENR is required');
-            await waitForEnter();
-            continue;
-          }
-        }
-      }
-
-      if (action === 'createDora') {
-        const beaconStep = network.steps.initBeacon;
-        if (beaconStep.status !== 'completed' || !beaconStep.data) {
-          console.log('\nBeacon node RPC URLs are required. Please provide:');
-          clRpcUrl = await prompt('CL RPC URL (e.g., http://IP:3500): ');
-          elRpcUrl = await prompt('EL RPC URL (e.g., http://IP:8545): ');
-          if (!clRpcUrl || !elRpcUrl) {
-            console.log('Both CL and EL RPC URLs are required');
             await waitForEnter();
             continue;
           }
@@ -487,7 +585,7 @@ async function manageNetworkSteps() {
     // Check prerequisites
     const step = network.steps[action];
     if (step.status === 'completed') {
-      const overwrite = await confirm(`Step "${action}" is already completed. Re-run?`);
+      const overwrite = await confirm(`Step "${action}" is already completed. Re-run?`, true);
       if (!overwrite) {
         continue;
       }
@@ -501,7 +599,7 @@ async function manageNetworkSteps() {
       displayKeyValue(network.config);
     }
 
-    const confirmed = await confirm('\nProceed with this step?');
+    const confirmed = await confirm('\nProceed with this step?', true);
     if (!confirmed) {
       continue;
     }
@@ -511,17 +609,12 @@ async function manageNetworkSteps() {
         const poaStep = network.steps.initPoa;
         const poaEnode = poaStep.status === 'completed' && poaStep.data ? poaStep.data.cliqueEnode : null;
         await executeInitBootnode(selected, poaEnode);
-      } else if (action === 'initBeacon') {
+      } else if (action === 'initBeaconBootnode') {
         const poaStep = network.steps.initPoa;
         const bootnodeStep = network.steps.initBootnode;
         const poaEnode = poaStep.status === 'completed' && poaStep.data ? poaStep.data.cliqueEnode : null;
         const bootnodeEnr = bootnodeStep.status === 'completed' && bootnodeStep.data ? bootnodeStep.data.bootnodeEnr : null;
-        await executeInitBeacon(selected, poaEnode, bootnodeEnr);
-      } else if (action === 'createDora') {
-        const beaconStep = network.steps.initBeacon;
-        const clRpcUrl = beaconStep.status === 'completed' && beaconStep.data ? `http://${beaconStep.data.beaconIp}:3500` : null;
-        const elRpcUrl = beaconStep.status === 'completed' && beaconStep.data ? `http://${beaconStep.data.beaconIp}:8545` : null;
-        await executeCreateDora(selected, clRpcUrl, elRpcUrl);
+        await executeInitBeaconBootnode(selected, poaEnode, bootnodeEnr);
       } else {
         await stepOption.func(selected);
       }
@@ -537,16 +630,14 @@ async function manageNetworkSteps() {
  * Add execution node menu
  */
 async function addExecutionNodeMenu() {
-  sectionHeader('Add Execution Node');
-
-  const networkNames = listNetworkNames();
-  if (networkNames.length === 0) {
-    console.log('No networks available');
+  const selected = getCurrentNetwork();
+  if (!selected) {
+    console.log('No network selected');
     await waitForEnter();
     return;
   }
 
-  const selected = await select('Select network', networkNames);
+  sectionHeader(`Add Execution Node: ${selected}`);
   const network = getNetwork(selected);
 
   const poaStep = network.steps.initPoa;
@@ -563,7 +654,7 @@ async function addExecutionNodeMenu() {
     console.log(`Node name: ${nodeName}`);
   }
 
-  const confirmed = await confirm('Proceed?');
+  const confirmed = await confirm('Proceed?', true);
   if (!confirmed) {
     return;
   }
@@ -584,16 +675,14 @@ async function addExecutionNodeMenu() {
  * Add bootnode menu
  */
 async function addBootnodeMenu() {
-  sectionHeader('Add Bootnode');
-
-  const networkNames = listNetworkNames();
-  if (networkNames.length === 0) {
-    console.log('No networks available');
+  const selected = getCurrentNetwork();
+  if (!selected) {
+    console.log('No network selected');
     await waitForEnter();
     return;
   }
 
-  const selected = await select('Select network', networkNames);
+  sectionHeader(`Add Bootnode: ${selected}`);
   const network = getNetwork(selected);
 
   const poaStep = network.steps.initPoa;
@@ -615,7 +704,7 @@ async function addBootnodeMenu() {
     console.log(`Node name: ${nodeName}`);
   }
 
-  const confirmed = await confirm('Proceed?');
+  const confirmed = await confirm('Proceed?', true);
   if (!confirmed) {
     return;
   }
@@ -636,16 +725,14 @@ async function addBootnodeMenu() {
  * Add beacon node menu
  */
 async function addBeaconNodeMenu() {
-  sectionHeader('Add Beacon Node');
-
-  const networkNames = listNetworkNames();
-  if (networkNames.length === 0) {
-    console.log('No networks available');
+  const selected = getCurrentNetwork();
+  if (!selected) {
+    console.log('No network selected');
     await waitForEnter();
     return;
   }
 
-  const selected = await select('Select network', networkNames);
+  sectionHeader(`Add Beacon Node: ${selected}`);
   const network = getNetwork(selected);
 
   const poaStep = network.steps.initPoa;
@@ -655,6 +742,9 @@ async function addBeaconNodeMenu() {
     await waitForEnter();
     return;
   }
+
+  console.log('\nNote: Beacon bootnode (initBeaconBootnode) is the main beacon node that validators peer to.');
+  console.log('      Additional beacon nodes can be added here for redundancy.');
 
   if (!(await requireClConfig(network))) {
     return;
@@ -667,7 +757,7 @@ async function addBeaconNodeMenu() {
     console.log(`Node name: ${nodeName}`);
   }
 
-  const confirmed = await confirm('Proceed?');
+  const confirmed = await confirm('Proceed?', true);
   if (!confirmed) {
     return;
   }
@@ -688,16 +778,14 @@ async function addBeaconNodeMenu() {
  * Add validator node menu - allows adding multiple nodes one by one
  */
 async function addValidatorNodeMenu() {
-  sectionHeader('Add Validator Node');
-
-  const networkNames = listNetworkNames();
-  if (networkNames.length === 0) {
-    console.log('No networks available');
+  const selected = getCurrentNetwork();
+  if (!selected) {
+    console.log('No network selected');
     await waitForEnter();
     return;
   }
 
-  const selected = await select('Select network', networkNames);
+  sectionHeader(`Add Validator Node: ${selected}`);
   const network = getNetwork(selected);
 
   const poaStep = network.steps.initPoa;
@@ -707,8 +795,13 @@ async function addValidatorNodeMenu() {
     return;
   }
 
+  // Get bootnode array - first node with enode is beacon node
+  const bootnodes = network.nodes?.bootnode || [];
+  const firstBootnode = bootnodes.length > 0 ? bootnodes.find(b => b.enode) || bootnodes[0] : null;
+
   let poaEnode = null;
   let bootnodeEnr = null;
+  let beaconBootnodeEnode = null;
 
   if (poaStep.status === 'completed' && poaStep.data) {
     poaEnode = poaStep.data.cliqueEnode;
@@ -722,8 +815,11 @@ async function addValidatorNodeMenu() {
     }
   }
 
+  // Get ENR from step or bootnode array
   if (bootnodeStep.status === 'completed' && bootnodeStep.data) {
     bootnodeEnr = bootnodeStep.data.bootnodeEnr;
+  } else if (firstBootnode?.enr) {
+    bootnodeEnr = firstBootnode.enr;
   } else {
     console.log('\nBootnode ENR is required. Please provide:');
     bootnodeEnr = await prompt('Bootnode ENR: ');
@@ -732,6 +828,17 @@ async function addValidatorNodeMenu() {
       await waitForEnter();
       return;
     }
+  }
+
+  // Get beacon bootnode enode from bootnode array (validators peer to this)
+  if (firstBootnode?.enode) {
+    beaconBootnodeEnode = firstBootnode.enode;
+    console.log(`\nUsing beacon node from bootnode array: ${firstBootnode.name || 'beacon-bootnode'}`);
+    console.log(`  ENODE: ${beaconBootnodeEnode}`);
+  } else {
+    console.log('\nBeacon node not found in bootnode array. Please create beacon node first.');
+    await waitForEnter();
+    return;
   }
 
   // Allow adding multiple nodes one by one
@@ -794,9 +901,9 @@ async function addValidatorNodeMenu() {
     console.log(`  Node name: ${nodeName || 'auto-generated'}`);
     console.log(`  Password: ${'*'.repeat(validatorPassword.length)}`);
 
-    const confirmed = await confirm('Proceed with creating this validator node?');
+    const confirmed = await confirm('Proceed with creating this validator node?', true);
     if (!confirmed) {
-      const continueAdding = await confirm('Continue adding more nodes?');
+      const continueAdding = await confirm('Continue adding more nodes?', true);
       if (!continueAdding) {
         break;
       }
@@ -810,7 +917,8 @@ async function addValidatorNodeMenu() {
         validatorPassword,
         nodeName || null,
         poaEnode,
-        bootnodeEnr
+        bootnodeEnr,
+        beaconBootnodeEnode
       );
       console.log(`\n✓ Validator node added successfully!`);
       console.log(`  Name: ${result.name}`);
@@ -819,7 +927,7 @@ async function addValidatorNodeMenu() {
       console.error(`\n✗ Error:`, error.message);
     }
 
-    const addMore = await confirm('\nAdd another validator node?');
+    const addMore = await confirm('\nAdd another validator node?', true);
     if (!addMore) {
       break;
     }
@@ -834,9 +942,9 @@ async function addValidatorNodeMenu() {
 function isClConfigReady(network) {
   const cl = network.config?.cl || {};
   return Boolean(
-    cl.depositContractAddress &&
-      cl.minGenesisActiveValidatorCount !== undefined &&
-      cl.depositBlock !== undefined,
+    cl.CL_DEPOSIT_CONTRACT_ADDRESS &&
+      cl.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT !== undefined &&
+      cl.CL_DEPOSIT_BLOCK !== undefined,
   );
 }
 
@@ -854,69 +962,84 @@ async function requireClConfig(network) {
  * Update CL config menu
  */
 async function updateClConfigMenu() {
-  sectionHeader('Update CL Configuration');
-
-  const networkNames = listNetworkNames();
-  if (networkNames.length === 0) {
-    console.log('No networks available');
+  const selected = getCurrentNetwork();
+  if (!selected) {
+    console.log('No network selected');
     await waitForEnter();
     return;
   }
 
-  const selected = await select('Select network', networkNames);
+  sectionHeader(`Update CL Configuration: ${selected}`);
   const network = getNetwork(selected);
   const clCurrent = network.config?.cl || {};
 
   console.log('\nCurrent CL Configuration:');
   displayKeyValue({
-    CL_DEPOSIT_CONTRACT_ADDRESS: clCurrent.depositContractAddress || '0x4242424242424242424242424242424242424242',
-    CL_DEPOSIT_CHAIN_ID: clCurrent.depositChainId ?? 84,
-    CL_DEPOSIT_NETWORK_ID: clCurrent.depositNetworkId ?? 84,
-    CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: clCurrent.minGenesisActiveValidatorCount ?? 8,
-    CL_DEPOSIT_BLOCK: clCurrent.depositBlock ?? 0,
-    CL_GENESIS_STATE_URL: clCurrent.genesisStateUrl || '(not set)',
-    CL_SECONDS_PER_SLOT: clCurrent.secondsPerSlot ?? 5,
-    CL_SLOTS_PER_EPOCH: clCurrent.slotsPerEpoch ?? 5,
-    CL_SECONDS_PER_ETH1_BLOCK: clCurrent.secondsPerEth1Block ?? 5,
+    CL_DEPOSIT_CONTRACT_ADDRESS: clCurrent.CL_DEPOSIT_CONTRACT_ADDRESS || '0x4242424242424242424242424242424242424242',
+    CL_DEPOSIT_CHAIN_ID: clCurrent.CL_DEPOSIT_CHAIN_ID ?? 84,
+    CL_DEPOSIT_NETWORK_ID: clCurrent.CL_DEPOSIT_NETWORK_ID ?? 84,
+    CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: clCurrent.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT ?? 8,
+    CL_DEPOSIT_BLOCK: clCurrent.CL_DEPOSIT_BLOCK ?? 0,
+    CL_GENESIS_STATE_URL: clCurrent.CL_GENESIS_STATE_URL || '(not set)',
+    CL_SECONDS_PER_SLOT: clCurrent.CL_SECONDS_PER_SLOT ?? 5,
+    CL_SLOTS_PER_EPOCH: clCurrent.CL_SLOTS_PER_EPOCH ?? 5,
+    CL_SECONDS_PER_ETH1_BLOCK: clCurrent.CL_SECONDS_PER_ETH1_BLOCK ?? 5,
   });
 
   console.log('\nEnter new CL configuration values (leave empty to keep current):');
-  const clDepositContractAddress = await prompt(`CL Deposit Contract Address [${clCurrent.depositContractAddress || '0x4242424242424242424242424242424242424242'}]: `);
-  const clDepositChainId = await prompt(`CL Deposit Chain ID [${clCurrent.depositChainId ?? 84}]: `);
-  const clDepositNetworkId = await prompt(`CL Deposit Network ID [${clCurrent.depositNetworkId ?? 84}]: `);
-  const clMinGenesisActiveValidatorCount = await prompt(`CL Min Genesis Active Validator Count [${clCurrent.minGenesisActiveValidatorCount ?? 8}]: `);
-  const clDepositBlock = await prompt(`CL Deposit Block [${clCurrent.depositBlock ?? 0}]: `);
-  const clGenesisStateUrl = await prompt(`CL Genesis State URL [${clCurrent.genesisStateUrl || ''}]: `);
-  const clSecondsPerSlot = await prompt(`CL Seconds Per Slot [${clCurrent.secondsPerSlot ?? 5}]: `);
-  const clSlotsPerEpoch = await prompt(`CL Slots Per Epoch [${clCurrent.slotsPerEpoch ?? 5}]: `);
-  const clSecondsPerEth1Block = await prompt(`CL Seconds Per Eth1 Block [${clCurrent.secondsPerEth1Block ?? 5}]: `);
+  const currentDepositContract = clCurrent.CL_DEPOSIT_CONTRACT_ADDRESS || '0x4242424242424242424242424242424242424242';
+  const currentDepositChainId = clCurrent.CL_DEPOSIT_CHAIN_ID ?? 84;
+  const currentDepositNetworkId = clCurrent.CL_DEPOSIT_NETWORK_ID ?? 84;
+  const currentMinGenesis = clCurrent.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT ?? 8;
+  const currentDepositBlock = clCurrent.CL_DEPOSIT_BLOCK ?? 0;
+  const currentGenesisStateUrl = clCurrent.CL_GENESIS_STATE_URL || '';
+  const currentSecondsPerSlot = clCurrent.CL_SECONDS_PER_SLOT ?? 5;
+  const currentSlotsPerEpoch = clCurrent.CL_SLOTS_PER_EPOCH ?? 5;
+  const currentSecondsPerEth1Block = clCurrent.CL_SECONDS_PER_ETH1_BLOCK ?? 5;
+  
+  const clDepositContractAddress = await prompt(`CL Deposit Contract Address [${currentDepositContract}]: `);
+  const clDepositChainId = await prompt(`CL Deposit Chain ID [${currentDepositChainId}]: `);
+  const clDepositNetworkId = await prompt(`CL Deposit Network ID [${currentDepositNetworkId}]: `);
+  const clMinGenesisActiveValidatorCount = await prompt(`CL Min Genesis Active Validator Count [${currentMinGenesis}]: `);
+  const clDepositBlock = await prompt(`CL Deposit Block [${currentDepositBlock}]: `);
+  const clGenesisStateUrl = await prompt(`CL Genesis State URL [${currentGenesisStateUrl}]: `);
+  const clSecondsPerSlot = await prompt(`CL Seconds Per Slot [${currentSecondsPerSlot}]: `);
+  const clSlotsPerEpoch = await prompt(`CL Slots Per Epoch [${currentSlotsPerEpoch}]: `);
+  const clSecondsPerEth1Block = await prompt(`CL Seconds Per Eth1 Block [${currentSecondsPerEth1Block}]: `);
 
+  // Store with env var names for direct use
   const updatedCl = {
-    depositContractAddress: clDepositContractAddress || clCurrent.depositContractAddress || '0x4242424242424242424242424242424242424242',
-    depositChainId: clDepositChainId ? parseInt(clDepositChainId, 10) : (clCurrent.depositChainId ?? 84),
-    depositNetworkId: clDepositNetworkId ? parseInt(clDepositNetworkId, 10) : (clCurrent.depositNetworkId ?? 84),
-    minGenesisActiveValidatorCount: clMinGenesisActiveValidatorCount ? parseInt(clMinGenesisActiveValidatorCount, 10) : (clCurrent.minGenesisActiveValidatorCount ?? 8),
-    depositBlock: clDepositBlock ? parseInt(clDepositBlock, 10) : (clCurrent.depositBlock ?? 0),
-    genesisStateUrl: clGenesisStateUrl !== '' ? (clGenesisStateUrl || null) : clCurrent.genesisStateUrl,
-    secondsPerSlot: clSecondsPerSlot ? parseInt(clSecondsPerSlot, 10) : (clCurrent.secondsPerSlot ?? 5),
-    slotsPerEpoch: clSlotsPerEpoch ? parseInt(clSlotsPerEpoch, 10) : (clCurrent.slotsPerEpoch ?? 5),
-    secondsPerEth1Block: clSecondsPerEth1Block ? parseInt(clSecondsPerEth1Block, 10) : (clCurrent.secondsPerEth1Block ?? 5),
+    CL_DEPOSIT_CONTRACT_ADDRESS: clDepositContractAddress || clCurrent.CL_DEPOSIT_CONTRACT_ADDRESS || '0x4242424242424242424242424242424242424242',
+    CL_DEPOSIT_CHAIN_ID: String(clDepositChainId ? parseInt(clDepositChainId, 10) : (clCurrent.CL_DEPOSIT_CHAIN_ID ? parseInt(clCurrent.CL_DEPOSIT_CHAIN_ID, 10) : 84)),
+    CL_DEPOSIT_NETWORK_ID: String(clDepositNetworkId ? parseInt(clDepositNetworkId, 10) : (clCurrent.CL_DEPOSIT_NETWORK_ID ? parseInt(clCurrent.CL_DEPOSIT_NETWORK_ID, 10) : 84)),
+    CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: String(clMinGenesisActiveValidatorCount ? parseInt(clMinGenesisActiveValidatorCount, 10) : (clCurrent.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT ? parseInt(clCurrent.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT, 10) : 8)),
+    CL_DEPOSIT_BLOCK: String(clDepositBlock ? parseInt(clDepositBlock, 10) : (clCurrent.CL_DEPOSIT_BLOCK ? parseInt(clCurrent.CL_DEPOSIT_BLOCK, 10) : 0)),
+    CL_SECONDS_PER_SLOT: String(clSecondsPerSlot ? parseInt(clSecondsPerSlot, 10) : (clCurrent.CL_SECONDS_PER_SLOT ? parseInt(clCurrent.CL_SECONDS_PER_SLOT, 10) : 5)),
+    CL_SLOTS_PER_EPOCH: String(clSlotsPerEpoch ? parseInt(clSlotsPerEpoch, 10) : (clCurrent.CL_SLOTS_PER_EPOCH ? parseInt(clCurrent.CL_SLOTS_PER_EPOCH, 10) : 5)),
+    CL_SECONDS_PER_ETH1_BLOCK: String(clSecondsPerEth1Block ? parseInt(clSecondsPerEth1Block, 10) : (clCurrent.CL_SECONDS_PER_ETH1_BLOCK ? parseInt(clCurrent.CL_SECONDS_PER_ETH1_BLOCK, 10) : 5)),
   };
+  
+  // Handle genesisStateUrl (optional, can be null)
+  if (clGenesisStateUrl !== '') {
+    updatedCl.CL_GENESIS_STATE_URL = clGenesisStateUrl || clCurrent.CL_GENESIS_STATE_URL || null;
+  } else if (clCurrent.CL_GENESIS_STATE_URL) {
+    updatedCl.CL_GENESIS_STATE_URL = clCurrent.CL_GENESIS_STATE_URL;
+  }
 
   console.log('\nUpdated CL Configuration:');
   displayKeyValue({
-    CL_DEPOSIT_CONTRACT_ADDRESS: updatedCl.depositContractAddress,
-    CL_DEPOSIT_CHAIN_ID: updatedCl.depositChainId,
-    CL_DEPOSIT_NETWORK_ID: updatedCl.depositNetworkId,
-    CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: updatedCl.minGenesisActiveValidatorCount,
-    CL_DEPOSIT_BLOCK: updatedCl.depositBlock,
-    CL_GENESIS_STATE_URL: updatedCl.genesisStateUrl || '(not set)',
-    CL_SECONDS_PER_SLOT: updatedCl.secondsPerSlot,
-    CL_SLOTS_PER_EPOCH: updatedCl.slotsPerEpoch,
-    CL_SECONDS_PER_ETH1_BLOCK: updatedCl.secondsPerEth1Block,
+    CL_DEPOSIT_CONTRACT_ADDRESS: updatedCl.CL_DEPOSIT_CONTRACT_ADDRESS,
+    CL_DEPOSIT_CHAIN_ID: updatedCl.CL_DEPOSIT_CHAIN_ID,
+    CL_DEPOSIT_NETWORK_ID: updatedCl.CL_DEPOSIT_NETWORK_ID,
+    CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: updatedCl.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT,
+    CL_DEPOSIT_BLOCK: updatedCl.CL_DEPOSIT_BLOCK,
+    CL_GENESIS_STATE_URL: updatedCl.CL_GENESIS_STATE_URL || '(not set)',
+    CL_SECONDS_PER_SLOT: updatedCl.CL_SECONDS_PER_SLOT,
+    CL_SLOTS_PER_EPOCH: updatedCl.CL_SLOTS_PER_EPOCH,
+    CL_SECONDS_PER_ETH1_BLOCK: updatedCl.CL_SECONDS_PER_ETH1_BLOCK,
   });
 
-  const confirmed = await confirm('\nSave these CL configuration changes?');
+  const confirmed = await confirm('\nSave these CL configuration changes?', true);
   if (!confirmed) {
     return;
   }
@@ -927,26 +1050,20 @@ async function updateClConfigMenu() {
   saveNetwork(selected, network);
   console.log('\n✓ CL configuration updated successfully!');
 
-  // Ask if user wants to update existing beacon nodes
-  const hasBeaconNodes =
-    (network.nodes?.bootnode && network.nodes.bootnode.length > 0) ||
-    (network.nodes?.beacon && network.nodes.beacon.length > 0) ||
-    (network.nodes?.beaconNodes && network.nodes.beaconNodes.length > 0) ||
-    (network.nodes?.validators && network.nodes.validators.length > 0);
+      // Ask if user wants to update existing beacon nodes
+      const bootnodes = network.nodes?.bootnode || [];
+      const hasBeaconBootnode = bootnodes.some(b => b.enode); // Beacon node in bootnode array
+      const hasBeaconNodes =
+        hasBeaconBootnode ||
+        (network.nodes?.beacon && network.nodes.beacon.length > 0) ||
+        (network.nodes?.validators && network.nodes.validators.length > 0);
 
   if (hasBeaconNodes) {
-    const updateNodes = await confirm('\nUpdate existing beacon nodes (bootnode, beacon, validators) with new CL config?');
+    const updateNodes = await confirm('\nUpdate existing beacon nodes (bootnode, beacon, validators) with new CL config?', true);
     if (updateNodes) {
+      // Use the env var names directly from updatedCl
       const envUpdates = {
-        CL_DEPOSIT_CONTRACT_ADDRESS: updatedCl.depositContractAddress,
-        CL_DEPOSIT_CHAIN_ID: String(updatedCl.depositChainId),
-        CL_DEPOSIT_NETWORK_ID: String(updatedCl.depositNetworkId),
-        CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: String(updatedCl.minGenesisActiveValidatorCount),
-        CL_DEPOSIT_BLOCK: String(updatedCl.depositBlock),
-        CL_SECONDS_PER_SLOT: String(updatedCl.secondsPerSlot),
-        CL_SLOTS_PER_EPOCH: String(updatedCl.slotsPerEpoch),
-        CL_SECONDS_PER_ETH1_BLOCK: String(updatedCl.secondsPerEth1Block),
-        ...(updatedCl.genesisStateUrl ? {CL_GENESIS_STATE_URL: updatedCl.genesisStateUrl} : {}),
+        ...updatedCl,
       };
 
       try {
@@ -976,16 +1093,14 @@ async function prepareClConfigMenu() {
  * Create blockscout menu
  */
 async function createBlockscoutMenu() {
-  sectionHeader('Create Blockscout');
-
-  const networkNames = listNetworkNames();
-  if (networkNames.length === 0) {
-    console.log('No networks available');
+  const selected = getCurrentNetwork();
+  if (!selected) {
+    console.log('No network selected');
     await waitForEnter();
     return;
   }
 
-  const selected = await select('Select network', networkNames);
+  sectionHeader(`Create Blockscout: ${selected}`);
   const network = getNetwork(selected);
   const poaStep = network.steps.initPoa;
   const cliqueRpc = poaStep.status === 'completed' && poaStep.data ? `http://${poaStep.data.cliqueIp}:8545` : '';
@@ -1008,7 +1123,7 @@ async function createBlockscoutMenu() {
   console.log(`  Network ID: ${elExplorer.networkId || el.networkId || 84} (from config)`);
   console.log(`  Network Name: ${elExplorer.networkName || el.networkName || `${selected} Network`} (from config)`);
 
-  const confirmed = await confirm('\nProceed with creating Blockscout?');
+  const confirmed = await confirm('\nProceed with creating Blockscout?', true);
   if (!confirmed) {
     return;
   }
@@ -1026,21 +1141,35 @@ async function createBlockscoutMenu() {
  * Create dora menu
  */
 async function createDoraMenu() {
-  sectionHeader('Create Dora');
-
-  const networkNames = listNetworkNames();
-  if (networkNames.length === 0) {
-    console.log('No networks available');
+  const selected = getCurrentNetwork();
+  if (!selected) {
+    console.log('No network selected');
     await waitForEnter();
     return;
   }
 
-  const selected = await select('Select network', networkNames);
+  sectionHeader(`Create Dora: ${selected}`);
   const network = getNetwork(selected);
 
+  // Try to get from bootnode array (first node with enode is beacon node)
+  const bootnodes = network.nodes?.bootnode || [];
+  const firstBootnode = bootnodes.length > 0 ? bootnodes.find(b => b.enode) || bootnodes[0] : null;
+  
+  // Backward compatibility: try old steps
+  const beaconBootnodeStep = network.steps.initBeaconBootnode;
   const beaconStep = network.steps.initBeacon;
-  const defaultClRpc = beaconStep.status === 'completed' && beaconStep.data ? `http://${beaconStep.data.beaconIp}:3500` : '';
-  const defaultElRpc = beaconStep.status === 'completed' && beaconStep.data ? `http://${beaconStep.data.beaconIp}:8545` : '';
+  
+  let beaconIp = null;
+  if (firstBootnode?.ip) {
+    beaconIp = firstBootnode.ip;
+  } else if (beaconBootnodeStep?.status === 'completed' && beaconBootnodeStep?.data?.beaconIp) {
+    beaconIp = beaconBootnodeStep.data.beaconIp;
+  } else if (beaconStep?.status === 'completed' && beaconStep?.data?.beaconIp) {
+    beaconIp = beaconStep.data.beaconIp;
+  }
+  
+  const defaultClRpc = beaconIp ? `http://${beaconIp}:3500` : '';
+  const defaultElRpc = beaconIp ? `http://${beaconIp}:8545` : '';
 
   const clRpcUrl = await prompt(`CL RPC URL [${defaultClRpc || 'required'}]: `) || defaultClRpc;
   const elRpcUrl = await prompt(`EL RPC URL [${defaultElRpc || 'required'}]: `) || defaultElRpc;
@@ -1056,7 +1185,7 @@ async function createDoraMenu() {
   console.log(`  CL RPC URL: ${clRpcUrl}`);
   console.log(`  EL RPC URL: ${elRpcUrl}`);
 
-  const confirmed = await confirm('\nProceed with creating Dora?');
+  const confirmed = await confirm('\nProceed with creating Dora?', true);
   if (!confirmed) {
     return;
   }
@@ -1074,16 +1203,14 @@ async function createDoraMenu() {
  * Update Blockscout RPC (from main menu)
  */
 async function updateBlockscoutMenu() {
-  sectionHeader('Update Blockscout RPC');
-
-  const networkNames = listNetworkNames();
-  if (networkNames.length === 0) {
-    console.log('No networks available');
+  const selected = getCurrentNetwork();
+  if (!selected) {
+    console.log('No network selected');
     await waitForEnter();
     return;
   }
 
-  const selected = await select('Select network', networkNames);
+  sectionHeader(`Update Blockscout RPC: ${selected}`);
   const network = getNetwork(selected);
   const poaStep = network.steps.initPoa;
   
@@ -1119,17 +1246,21 @@ async function updateBlockscoutMenu() {
   const el = config.el || {};
   const networkIdDefault = elExplorer.networkId || el.networkId || config.networkId || 84;
   const networkNameDefault = elExplorer.networkName || el.networkName || config.networkName || `${selected} Network`;
+  const blockTransformerDefault = elExplorer.blockTransformer || 'clique';
   
   const networkIdInput = await prompt(`Network ID [${networkIdDefault}]: `);
   const networkId = networkIdInput ? Number(networkIdInput) : null; // null means use default from config
+  const blockTransformerInput = await prompt(`Block Transformer (e.g., clique, base, optimism) [${blockTransformerDefault}]: `);
+  const blockTransformer = blockTransformerInput || blockTransformerDefault;
 
   console.log('\nReview Blockscout update:');
   console.log(`  Network: ${selected}`);
   console.log(`  New EL RPC URL: ${newRpc}`);
+  console.log(`  Block Transformer: ${blockTransformer} (${blockTransformerInput ? 'custom' : 'from config/default'})`);
   console.log(`  Network ID: ${networkId || networkIdDefault} (${networkId ? 'custom' : 'from config'})`);
   console.log(`  Network Name: ${networkNameDefault} (from config)`);
 
-  const confirmed = await confirm('\nProceed with updating Blockscout?');
+  const confirmed = await confirm('\nProceed with updating Blockscout?', true);
   if (!confirmed) {
     return;
   }
@@ -1138,6 +1269,7 @@ async function updateBlockscoutMenu() {
     await executeUpdateBlockscout(
       selected,
       newRpc,
+      blockTransformer,
       networkId, // null means use default from config
       null, // null means use default from config
     );
@@ -1149,38 +1281,182 @@ async function updateBlockscoutMenu() {
 }
 
 /**
+ * Calculate EL timestamp from CL epoch
+ * Formula: TIMESTAMP = GENESIS_TIME + (EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT)
+ */
+async function calculateElTimeFromClEpoch(clEpoch, beaconRpcUrl) {
+  try {
+    const genesisResponse = await axios.get(`${beaconRpcUrl}/eth/v1/beacon/genesis`);
+    const genesisTime = Number(genesisResponse.data.data.genesis_time);
+
+    const specResponse = await axios.get(`${beaconRpcUrl}/eth/v1/config/spec`);
+    const slotsPerEpoch = Number(specResponse.data.data.SLOTS_PER_EPOCH);
+    const secondsPerSlot = Number(specResponse.data.data.SECONDS_PER_SLOT);
+
+    const slotsTotal = clEpoch * slotsPerEpoch;
+    const timestamp = genesisTime + slotsTotal * secondsPerSlot;
+
+    return timestamp;
+  } catch (error) {
+    throw new Error(`Failed to calculate EL time from CL epoch: ${error.message}`);
+  }
+}
+
+/**
+ * Get beacon RPC URL for the network
+ */
+function getBeaconRpcUrl(network) {
+  // Try to get from bootnode array (first node with enode is beacon node)
+  const bootnodes = network.nodes?.bootnode || [];
+  const firstBootnode = bootnodes.length > 0 ? bootnodes.find(b => b.enode) || bootnodes[0] : null;
+  if (firstBootnode?.ip) {
+    return `http://${firstBootnode.ip}:3500`;
+  }
+
+  // Backward compatibility: try old steps
+  const beaconBootnodeStep = network.steps?.initBeaconBootnode;
+  if (beaconBootnodeStep?.status === 'completed' && beaconBootnodeStep?.data?.beaconIp) {
+    return `http://${beaconBootnodeStep.data.beaconIp}:3500`;
+  }
+
+  const beaconStep = network.steps?.initBeacon;
+  if (beaconStep?.status === 'completed' && beaconStep?.data?.beaconIp) {
+    return `http://${beaconStep.data.beaconIp}:3500`;
+  }
+
+  // Try validators (they also run beacon)
+  const validators = network.nodes?.validators || [];
+  if (validators.length > 0 && validators[0].ip) {
+    return `http://${validators[0].ip}:3500`;
+  }
+
+  // Try config
+  const clExplorer = network.config?.clExplorer;
+  if (clExplorer?.clRpcUrl) {
+    // Extract base URL from clRpcUrl
+    let url = clExplorer.clRpcUrl;
+    // Remove /eth path if present
+    url = url.replace(/\/eth\/?.*$/, '');
+    // Ensure it's just base URL without port if missing
+    if (!url.includes(':3500') && !url.match(/:\d+$/)) {
+      url = url.replace(/\/$/, '') + ':3500';
+    }
+    return url;
+  }
+
+  return null;
+}
+
+/**
+ * Get current fork config values from network (for display purposes)
+ * This is a simplified version that reads from config directly
+ */
+function getCurrentForkConfig(network) {
+  const config = network.config || {};
+  const cl = config.cl || {};
+  const el = config.el || {};
+  const forkConfig = {};
+  
+  // Get from forkConfig (already env var names)
+  if (config.forkConfig) {
+    Object.assign(forkConfig, config.forkConfig);
+  }
+  
+  // Get from cl and el with env var names (only env var names, no backward compatibility needed here)
+  Object.keys(cl).forEach(key => {
+    if ((key.startsWith('CL_') || key.startsWith('EL_')) && !forkConfig[key]) {
+      forkConfig[key] = cl[key];
+    }
+  });
+  
+  Object.keys(el).forEach(key => {
+    if ((key.startsWith('CL_') || key.startsWith('EL_')) && !forkConfig[key]) {
+      forkConfig[key] = el[key];
+    }
+  });
+  
+  return forkConfig;
+}
+
+/**
  * Update fork menu
  */
 async function updateForkMenu() {
-  sectionHeader('Update Fork Configuration');
-
-  const networkNames = listNetworkNames();
-  if (networkNames.length === 0) {
-    console.log('No networks available');
+  const selected = getCurrentNetwork();
+  if (!selected) {
+    console.log('No network selected');
     await waitForEnter();
     return;
   }
 
-  const selected = await select('Select network', networkNames);
+  sectionHeader(`Update Fork Configuration: ${selected}`);
   const network = getNetwork(selected);
+
+  // Get current fork config values
+  const currentForkConfig = getCurrentForkConfig(network);
+
+  // Get beacon RPC URL for auto-calculation
+  const beaconRpcUrl = getBeaconRpcUrl(network);
+  const canAutoCalculate = beaconRpcUrl !== null;
+
+  // Display current values
+  const commonForkVars = [
+    'EL_TERMINAL_TOTAL_DIFFICULTY',
+    'CL_TERMINAL_TOTAL_DIFFICULTY',
+    'EL_SHANGHAI_TIME',
+    'CL_CAPELLA_FORK_EPOCH',
+    'EL_CANCUN_TIME',
+    'CL_DENEB_FORK_EPOCH',
+    'EL_PRAGUE_TIME',
+    'CL_ELECTRA_FORK_EPOCH',
+    'GETH_DOCKER_IMAGE',
+    'LH_IMAGE',
+  ];
+
+  console.log('\nCurrent fork configuration:');
+  const hasCurrentValues = commonForkVars.some(key => currentForkConfig[key]);
+  if (hasCurrentValues) {
+    commonForkVars.forEach(key => {
+      if (currentForkConfig[key]) {
+        console.log(`  ${key}=${currentForkConfig[key]}`);
+      }
+    });
+  } else {
+    console.log('  (no fork configuration set yet)');
+  }
 
   console.log('\nEnter environment variables to update (key=value format)');
   console.log('Press Enter with empty line to finish');
+  console.log('Leave value empty to keep current value');
   console.log('\nCommon fork variables:');
-  console.log('  - EL_TERMINAL_TOTAL_DIFFICULTY');
-  console.log('  - CL_TERMINAL_TOTAL_DIFFICULTY');
-  console.log('  - EL_SHANGHAI_TIME');
-  console.log('  - CL_CAPELLA_FORK_EPOCH');
-  console.log('  - EL_CANCUN_TIME');
-  console.log('  - CL_DENEB_FORK_EPOCH');
-  console.log('  - EL_PRAGUE_TIME');
-  console.log('  - CL_ELECTRA_FORK_EPOCH');
-  console.log('  - GETH_DOCKER_IMAGE');
-  console.log('  - LH_IMAGE');
+  commonForkVars.forEach(key => {
+    const note = key.includes('SHANGHAI') ? ' (auto-calculated from CL_CAPELLA_FORK_EPOCH)' :
+                 key.includes('CANCUN') ? ' (auto-calculated from CL_DENEB_FORK_EPOCH)' :
+                 key.includes('PRAGUE') ? ' (auto-calculated from CL_ELECTRA_FORK_EPOCH)' : '';
+    console.log(`  - ${key}${note}`);
+  });
+  
+  if (canAutoCalculate) {
+    console.log(`\n✓ Auto-calculation enabled (using beacon RPC: ${beaconRpcUrl})`);
+    console.log('  When you enter CL_*_FORK_EPOCH, corresponding EL_*_TIME will be calculated automatically');
+  } else {
+    console.log('\n⚠ Auto-calculation disabled (beacon node not found)');
+    console.log('  You need to manually enter both CL_*_FORK_EPOCH and EL_*_TIME');
+  }
 
   const envUpdates = {};
+  const epochToTimeMapping = {
+    'CL_CAPELLA_FORK_EPOCH': 'EL_SHANGHAI_TIME',
+    'CL_DENEB_FORK_EPOCH': 'EL_CANCUN_TIME',
+    'CL_ELECTRA_FORK_EPOCH': 'EL_PRAGUE_TIME',
+  };
+
   while (true) {
-    const line = await prompt('\nEnter key=value (or empty to finish): ');
+    // Show prompt with current value if exists
+    const currentValueHint = Object.keys(currentForkConfig).length > 0 
+      ? '\nOr enter a specific key to update (e.g., CL_CAPELLA_FORK_EPOCH=60)' 
+      : '';
+    const line = await prompt(`\nEnter key=value${currentValueHint} (or empty to finish): `);
     if (!line.trim()) {
       break;
     }
@@ -1190,9 +1466,39 @@ async function updateForkMenu() {
       continue;
     }
     const key = line.slice(0, equalIndex).trim();
-    const value = line.slice(equalIndex + 1).trim();
-    if (key) {
-      envUpdates[key] = value;
+    let value = line.slice(equalIndex + 1).trim();
+    if (!key) {
+      continue;
+    }
+
+    // If value is empty and current value exists, skip (keep current)
+    if (!value && currentForkConfig[key]) {
+      console.log(`  Keeping current value: ${key}=${currentForkConfig[key]}`);
+      continue;
+    }
+
+    // If value is empty and no current value, skip this key
+    if (!value) {
+      console.log(`  Skipping ${key} (no value provided and no current value)`);
+      continue;
+    }
+
+    envUpdates[key] = value;
+
+    // Auto-calculate EL time if CL epoch is provided
+    if (canAutoCalculate && epochToTimeMapping[key] && !envUpdates[epochToTimeMapping[key]]) {
+      const epoch = parseInt(value, 10);
+      if (!isNaN(epoch)) {
+        try {
+          console.log(`\n  Calculating ${epochToTimeMapping[key]} from ${key}=${epoch}...`);
+          const calculatedTime = await calculateElTimeFromClEpoch(epoch, beaconRpcUrl);
+          envUpdates[epochToTimeMapping[key]] = String(calculatedTime);
+          console.log(`  ✓ ${epochToTimeMapping[key]}=${calculatedTime} (calculated)`);
+        } catch (error) {
+          console.log(`  ⚠ Failed to calculate ${epochToTimeMapping[key]}: ${error.message}`);
+          console.log(`  You may need to set ${epochToTimeMapping[key]} manually`);
+        }
+      }
     }
   }
 
@@ -1218,7 +1524,7 @@ async function updateForkMenu() {
     console.log('Using default delays: 5s for validators, 3s for beacon nodes');
   }
 
-  const confirmed = await confirm('\nProceed with updating beacon and validator nodes?');
+  const confirmed = await confirm('\nProceed with updating beacon and validator nodes?', true);
   if (!confirmed) {
     return;
   }
@@ -1240,16 +1546,14 @@ async function updateForkMenu() {
  * Manage network config
  */
 async function manageNetworkConfigMenu() {
-  sectionHeader('Manage Network Configuration');
-
-  const networkNames = listNetworkNames();
-  if (networkNames.length === 0) {
-    console.log('No networks available');
+  const selected = getCurrentNetwork();
+  if (!selected) {
+    console.log('No network selected');
     await waitForEnter();
     return;
   }
 
-  const selected = await select('Select network', networkNames);
+  sectionHeader(`Manage Network Configuration: ${selected}`);
   const network = getNetwork(selected);
 
   const configSections = [
@@ -1344,16 +1648,26 @@ async function updateConfigSection(networkName, section) {
     case 'cl':
       console.log('\nCurrent CL Configuration:');
       displayKeyValue(current);
-      const depositContract = await prompt(`Deposit Contract Address [${current.depositContractAddress || '0x4242424242424242424242424242424242424242'}]: `);
-      const minGenesis = await prompt(`Min Genesis Validator Count [${current.minGenesisActiveValidatorCount || 8}]: `);
-      const depositBlock = await prompt(`Deposit Block [${current.depositBlock || 0}]: `);
-      const genesisStateUrl = await prompt(`Genesis State URL [${current.genesisStateUrl || ''}]: `);
-      const lighthouseImage = await prompt(`Lighthouse Image [${current.lighthouseImage || 'sigp/lighthouse:v7.0.1'}]: `);
-      if (depositContract) updates.depositContractAddress = depositContract;
-      if (minGenesis) updates.minGenesisActiveValidatorCount = parseInt(minGenesis, 10);
-      if (depositBlock) updates.depositBlock = parseInt(depositBlock, 10);
-      if (genesisStateUrl !== '') updates.genesisStateUrl = genesisStateUrl || null;
-      if (lighthouseImage) updates.lighthouseImage = lighthouseImage;
+      const depositContract = await prompt(`CL Deposit Contract Address [${current.CL_DEPOSIT_CONTRACT_ADDRESS || '0x4242424242424242424242424242424242424242'}]: `);
+      const depositChainId = await prompt(`CL Deposit Chain ID [${current.CL_DEPOSIT_CHAIN_ID || 84}]: `);
+      const depositNetworkId = await prompt(`CL Deposit Network ID [${current.CL_DEPOSIT_NETWORK_ID || 84}]: `);
+      const minGenesis = await prompt(`CL Min Genesis Validator Count [${current.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT || 8}]: `);
+      const depositBlock = await prompt(`CL Deposit Block [${current.CL_DEPOSIT_BLOCK || 0}]: `);
+      const genesisStateUrl = await prompt(`CL Genesis State URL [${current.CL_GENESIS_STATE_URL || ''}]: `);
+      const secondsPerSlot = await prompt(`CL Seconds Per Slot [${current.CL_SECONDS_PER_SLOT || 5}]: `);
+      const slotsPerEpoch = await prompt(`CL Slots Per Epoch [${current.CL_SLOTS_PER_EPOCH || 5}]: `);
+      const secondsPerEth1Block = await prompt(`CL Seconds Per Eth1 Block [${current.CL_SECONDS_PER_ETH1_BLOCK || 5}]: `);
+      const lighthouseImage = await prompt(`Lighthouse Image [${current.LH_IMAGE || 'sigp/lighthouse:v7.0.1'}]: `);
+      if (depositContract) updates.CL_DEPOSIT_CONTRACT_ADDRESS = depositContract;
+      if (depositChainId) updates.CL_DEPOSIT_CHAIN_ID = String(parseInt(depositChainId, 10));
+      if (depositNetworkId) updates.CL_DEPOSIT_NETWORK_ID = String(parseInt(depositNetworkId, 10));
+      if (minGenesis) updates.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT = String(parseInt(minGenesis, 10));
+      if (depositBlock) updates.CL_DEPOSIT_BLOCK = String(parseInt(depositBlock, 10));
+      if (genesisStateUrl !== '') updates.CL_GENESIS_STATE_URL = genesisStateUrl || null;
+      if (secondsPerSlot) updates.CL_SECONDS_PER_SLOT = String(parseInt(secondsPerSlot, 10));
+      if (slotsPerEpoch) updates.CL_SLOTS_PER_EPOCH = String(parseInt(slotsPerEpoch, 10));
+      if (secondsPerEth1Block) updates.CL_SECONDS_PER_ETH1_BLOCK = String(parseInt(secondsPerEth1Block, 10));
+      if (lighthouseImage) updates.LH_IMAGE = lighthouseImage;
       break;
 
     case 'elExplorer':
@@ -1386,7 +1700,7 @@ async function updateConfigSection(networkName, section) {
   console.log('\nUpdates to apply:');
   displayKeyValue(updates);
 
-  const confirmed = await confirm('\nApply these updates?');
+  const confirmed = await confirm('\nApply these updates?', true);
   if (!confirmed) {
     return;
   }
@@ -1400,16 +1714,14 @@ async function updateConfigSection(networkName, section) {
  * Delete a network
  */
 async function deleteNetworkMenu() {
-  sectionHeader('Delete Network');
-
-  const networkNames = listNetworkNames();
-  if (networkNames.length === 0) {
-    console.log('No networks available');
+  const selected = getCurrentNetwork();
+  if (!selected) {
+    console.log('No network selected');
     await waitForEnter();
     return;
   }
 
-  const selected = await select('Select network to delete', networkNames);
+  sectionHeader(`Delete Network: ${selected}`);
   const confirmed = await confirm(`\nAre you sure you want to delete network "${selected}"? This cannot be undone.`);
   if (!confirmed) {
     console.log('Cancelled');
@@ -1472,39 +1784,6 @@ async function main() {
           break;
         case 'View network details':
           await viewNetworkDetails();
-          break;
-        case 'Manage network config':
-          await manageNetworkConfigMenu();
-          break;
-      case 'Prepare CL config':
-        await prepareClConfigMenu();
-        break;
-      case 'Add bootnode':
-        await addBootnodeMenu();
-        break;
-        case 'Add beacon node':
-          await addBeaconNodeMenu();
-          break;
-        case 'Add validator node':
-          await addValidatorNodeMenu();
-          break;
-      case 'Create blockscout':
-        await createBlockscoutMenu();
-        break;
-      case 'Create dora':
-        await createDoraMenu();
-        break;
-        case 'Update CL config':
-          await updateClConfigMenu();
-          break;
-        case 'Update blockscout RPC':
-          await updateBlockscoutMenu();
-          break;
-        case 'Update fork (beacon & validator)':
-          await updateForkMenu();
-          break;
-        case 'Delete network':
-          await deleteNetworkMenu();
           break;
         case 'Exit':
           console.log('\nGoodbye!');

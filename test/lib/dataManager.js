@@ -231,19 +231,16 @@ export function initNetwork(networkName, config = {}) {
     config: mergedConfig,
     steps: {
       initPoa: {status: 'pending', data: null},
-      createBlockscout: {status: 'pending', data: null},
       initBootnode: {status: 'pending', data: null},
-      initBeacon: {status: 'pending', data: null},
-      createDora: {status: 'pending', data: null},
     },
     nodes: {
       clique: [],
       bootnode: [],
-      beacon: [],
+      beacon: [], // Additional beacon nodes (not bootnodes)
       validators: [],
       execution: [], // Additional execution nodes
-      beaconNodes: [], // Additional beacon nodes
       blockscout: [], // Blockscout nodes
+      dora: [], // Dora explorer nodes
     },
     env: {},
   };
@@ -321,26 +318,28 @@ export function updateNetworkStep(networkName, stepName, stepData) {
       beacon: [],
       validators: [],
       execution: [],
-      beaconNodes: [],
       blockscout: [],
+      dora: [],
     };
   }
   
   if (stepName === 'initPoa' && stepData.cliqueIp) {
     network.nodes.clique = [{name: 'clique', ip: stepData.cliqueIp, enode: stepData.cliqueEnode}];
   } else if (stepName === 'initBootnode' && stepData.bootnodeIp) {
+    // First bootnode entry (Lighthouse bootnode only, no EL)
     network.nodes.bootnode = [{name: 'bootnode', ip: stepData.bootnodeIp, enr: stepData.bootnodeEnr}];
   } else if (stepName === 'initBeacon' && stepData.beaconIp) {
-    network.nodes.beacon = [{name: 'beacon-normal-node-1', ip: stepData.beaconIp, enode: stepData.beaconEnode}];
+    // Backward compatibility: old initBeacon step - add to bootnode array
+    if (!network.nodes.bootnode) {
+      network.nodes.bootnode = [];
+    }
+    // Check if beacon node already exists in bootnode array
+    const existingBeacon = network.nodes.bootnode.find(b => b.enode === stepData.beaconEnode);
+    if (!existingBeacon) {
+      network.nodes.bootnode.push({name: 'beacon-bootnode', ip: stepData.beaconIp, enode: stepData.beaconEnode, enr: stepData.bootnodeEnr});
+    }
   } else if (stepName === 'createValidators' && stepData.nodes) {
     network.nodes.validators = stepData.nodes;
-  } else if (stepName === 'createBlockscout' && stepData.blockscoutIp) {
-    network.nodes.blockscout = [
-      {
-        name: 'blockscout',
-        ip: stepData.blockscoutIp,
-      },
-    ];
   }
   
   saveNetwork(networkName, network);
@@ -362,7 +361,8 @@ export function addNodeToNetwork(networkName, nodeType, nodeData) {
       beacon: [],
       validators: [],
       execution: [],
-      beaconNodes: [],
+      blockscout: [],
+      dora: [],
     };
   }
   if (!network.nodes[nodeType]) {

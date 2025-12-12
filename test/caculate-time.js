@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const INPUT_EPOCH = 60;
-const BEACONCHAIN_API_URL = 'http://136.110.112.90:3500';
+const INPUT_EPOCH = 35;
+const BEACONCHAIN_API_URL = 'http://136.110.112.79:3500';
 
 const main = async () => {
   const GENESIS_TIME = (await axios.get(`${BEACONCHAIN_API_URL}/eth/v1/beacon/genesis`)).data.data.genesis_time;

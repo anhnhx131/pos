@@ -33,6 +33,7 @@ import {
   updateBootnode,
   updateBeacon,
   updateBeaconVc,
+  updateBlockscout,
 } from './nodeUpdateHelper.js';
 
 // External dependencies
@@ -106,67 +107,110 @@ function buildContextFromNetwork(network) {
 
 /**
  * Get all fork config and CL config that should be applied to new nodes
+ * Supports both old structure (mapped keys) and new structure (env var names)
  */
 function getNodeForkConfig(network) {
   const forkConfig = {};
   const config = network.config || {};
   const cl = config.cl || {};
+  const el = config.el || {};
   
-  // Apply CL configs (support both old and new structure)
+  // NEW STRUCTURE: Direct env var names in config.cl and config.el
+  // Apply all CL configs that are env var names (starts with CL_)
+  Object.keys(cl).forEach(key => {
+    if (key.startsWith('CL_') || key.startsWith('EL_')) {
+      const value = cl[key];
+      if (value !== undefined && value !== null && value !== '') {
+        forkConfig[key] = String(value);
+      }
+    }
+  });
+  
+  // Apply all EL configs that are env var names (starts with EL_)
+  Object.keys(el).forEach(key => {
+    if (key.startsWith('CL_') || key.startsWith('EL_')) {
+      const value = el[key];
+      if (value !== undefined && value !== null && value !== '') {
+        forkConfig[key] = String(value);
+      }
+    }
+  });
+  
+  // OLD STRUCTURE: Support backward compatibility with mapped keys
+  // Apply CL configs (backward compatibility)
   const depositContract = cl.depositContractAddress || config.clDepositContractAddress;
   const minGenesis = cl.minGenesisActiveValidatorCount !== undefined ? cl.minGenesisActiveValidatorCount : config.clMinGenesisActiveValidatorCount;
   const depositBlock = cl.depositBlock !== undefined ? cl.depositBlock : config.clDepositBlock;
   const genesisStateUrl = cl.genesisStateUrl || config.clGenesisStateUrl;
+  const depositChainId = cl.depositChainId !== undefined ? cl.depositChainId : config.clDepositChainId;
+  const depositNetworkId = cl.depositNetworkId !== undefined ? cl.depositNetworkId : config.clDepositNetworkId;
+  const secondsPerSlot = cl.secondsPerSlot !== undefined ? cl.secondsPerSlot : config.clSecondsPerSlot;
+  const slotsPerEpoch = cl.slotsPerEpoch !== undefined ? cl.slotsPerEpoch : config.clSlotsPerEpoch;
+  const secondsPerEth1Block = cl.secondsPerEth1Block !== undefined ? cl.secondsPerEth1Block : config.clSecondsPerEth1Block;
   
-  if (depositContract) {
+  if (depositContract && !forkConfig.CL_DEPOSIT_CONTRACT_ADDRESS) {
     forkConfig.CL_DEPOSIT_CONTRACT_ADDRESS = depositContract;
   }
-  if (minGenesis !== undefined) {
+  if (minGenesis !== undefined && !forkConfig.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT) {
     forkConfig.CL_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT = String(minGenesis);
   }
-  if (depositBlock !== undefined) {
+  if (depositBlock !== undefined && !forkConfig.CL_DEPOSIT_BLOCK) {
     forkConfig.CL_DEPOSIT_BLOCK = String(depositBlock);
   }
-  if (genesisStateUrl) {
+  if (genesisStateUrl && !forkConfig.CL_GENESIS_STATE_URL) {
     forkConfig.CL_GENESIS_STATE_URL = genesisStateUrl;
   }
+  if (depositChainId !== undefined && !forkConfig.CL_DEPOSIT_CHAIN_ID) {
+    forkConfig.CL_DEPOSIT_CHAIN_ID = String(depositChainId);
+  }
+  if (depositNetworkId !== undefined && !forkConfig.CL_DEPOSIT_NETWORK_ID) {
+    forkConfig.CL_DEPOSIT_NETWORK_ID = String(depositNetworkId);
+  }
+  if (secondsPerSlot !== undefined && !forkConfig.CL_SECONDS_PER_SLOT) {
+    forkConfig.CL_SECONDS_PER_SLOT = String(secondsPerSlot);
+  }
+  if (slotsPerEpoch !== undefined && !forkConfig.CL_SLOTS_PER_EPOCH) {
+    forkConfig.CL_SLOTS_PER_EPOCH = String(slotsPerEpoch);
+  }
+  if (secondsPerEth1Block !== undefined && !forkConfig.CL_SECONDS_PER_ETH1_BLOCK) {
+    forkConfig.CL_SECONDS_PER_ETH1_BLOCK = String(secondsPerEth1Block);
+  }
   
-  // Apply EL fork configs
-  const el = config.el || {};
-  if (el.terminalTotalDifficulty) {
+  // Apply EL fork configs (backward compatibility)
+  if (el.terminalTotalDifficulty && !forkConfig.EL_TERMINAL_TOTAL_DIFFICULTY) {
     forkConfig.EL_TERMINAL_TOTAL_DIFFICULTY = String(el.terminalTotalDifficulty);
   }
-  if (el.shanghaiTime) {
+  if (el.shanghaiTime && !forkConfig.EL_SHANGHAI_TIME) {
     forkConfig.EL_SHANGHAI_TIME = String(el.shanghaiTime);
   }
-  if (el.cancunTime) {
+  if (el.cancunTime && !forkConfig.EL_CANCUN_TIME) {
     forkConfig.EL_CANCUN_TIME = String(el.cancunTime);
   }
-  if (el.pragueTime) {
+  if (el.pragueTime && !forkConfig.EL_PRAGUE_TIME) {
     forkConfig.EL_PRAGUE_TIME = String(el.pragueTime);
   }
-  if (el.gethImage) {
+  if (el.gethImage && !forkConfig.GETH_DOCKER_IMAGE) {
     forkConfig.GETH_DOCKER_IMAGE = el.gethImage;
   }
   
-  // Apply CL fork configs
-  if (cl.terminalTotalDifficulty) {
+  // Apply CL fork configs (backward compatibility)
+  if (cl.terminalTotalDifficulty && !forkConfig.CL_TERMINAL_TOTAL_DIFFICULTY) {
     forkConfig.CL_TERMINAL_TOTAL_DIFFICULTY = String(cl.terminalTotalDifficulty);
   }
-  if (cl.capellaForkEpoch !== undefined) {
+  if (cl.capellaForkEpoch !== undefined && !forkConfig.CL_CAPELLA_FORK_EPOCH) {
     forkConfig.CL_CAPELLA_FORK_EPOCH = String(cl.capellaForkEpoch);
   }
-  if (cl.denebForkEpoch !== undefined) {
+  if (cl.denebForkEpoch !== undefined && !forkConfig.CL_DENEB_FORK_EPOCH) {
     forkConfig.CL_DENEB_FORK_EPOCH = String(cl.denebForkEpoch);
   }
-  if (cl.electraForkEpoch !== undefined) {
+  if (cl.electraForkEpoch !== undefined && !forkConfig.CL_ELECTRA_FORK_EPOCH) {
     forkConfig.CL_ELECTRA_FORK_EPOCH = String(cl.electraForkEpoch);
   }
-  if (cl.lighthouseImage) {
+  if (cl.lighthouseImage && !forkConfig.LH_IMAGE) {
     forkConfig.LH_IMAGE = cl.lighthouseImage;
   }
   
-  // Apply fork configs (from updateForkForAllNodes)
+  // Apply fork configs (from updateForkForAllNodes - these are already env var names)
   if (config.forkConfig) {
     Object.assign(forkConfig, config.forkConfig);
   }
@@ -192,7 +236,7 @@ export async function executeInitPoa(networkName) {
 }
 
 /**
- * Execute initBootnode step
+ * Execute initBootnode step - creates bootnode, then automatically creates beacon node and adds to bootnode array
  */
 export async function executeInitBootnode(networkName, poaEnode = null) {
   const network = getNetwork(networkName);
@@ -208,52 +252,49 @@ export async function executeInitBootnode(networkName, poaEnode = null) {
   }
 
   const context = buildContextFromNetwork(network);
+  
+  // Step 1: Create bootnode
   console.log(`[${networkName}] Starting initBootnode...`);
-  const result = await initBootnode({
+  const bootnodeResult = await initBootnode({
     poaEnode: effectivePoaEnode,
     context,
   });
-  updateNetworkStep(networkName, 'initBootnode', result);
-  console.log(`[${networkName}] initBootnode completed:`, result);
-  return result;
+  updateNetworkStep(networkName, 'initBootnode', bootnodeResult);
+  console.log(`[${networkName}] Bootnode created:`, bootnodeResult);
+
+  // Step 2: Automatically create beacon node and add to bootnode array
+  console.log(`[${networkName}] Creating beacon node and adding to bootnode array...`);
+  const beaconResult = await initBeacon({
+    poaEnode: effectivePoaEnode,
+    bootnodeEnr: bootnodeResult.bootnodeEnr,
+    context,
+  });
+  
+  // Add beacon node to bootnode array (has both enode and enr)
+  const beaconNodeData = {
+    name: 'beacon-bootnode',
+    ip: beaconResult.beaconIp,
+    enode: beaconResult.beaconEnode,
+    enr: bootnodeResult.bootnodeEnr, // Same ENR for CL
+  };
+  addNodeToNetwork(networkName, 'bootnode', beaconNodeData);
+  console.log(`[${networkName}] Beacon node added to bootnode array:`, beaconNodeData);
+  
+  console.log(`[${networkName}] initBootnode completed (bootnode + beacon node created)`);
+  return {bootnode: bootnodeResult, beacon: beaconResult};
 }
 
+
 /**
- * Execute initBeacon step
+ * Execute initBeacon step (deprecated, use executeInitBeaconBootnode instead)
+ * @deprecated Use executeInitBeaconBootnode instead
  */
 export async function executeInitBeacon(networkName, poaEnode = null, bootnodeEnr = null) {
-  const network = getNetwork(networkName);
-  if (!network) {
-    throw new Error(`Network "${networkName}" not found`);
-  }
-
-  const poaStep = network.steps.initPoa;
-  const bootnodeStep = network.steps.initBootnode;
-  
-  const effectivePoaEnode = poaEnode || (poaStep.status === 'completed' && poaStep.data ? poaStep.data.cliqueEnode : null);
-  const effectiveBootnodeEnr = bootnodeEnr || (bootnodeStep.status === 'completed' && bootnodeStep.data ? bootnodeStep.data.bootnodeEnr : null);
-  
-  if (!effectivePoaEnode) {
-    throw new Error('POA enode is required. Provide poaEnode parameter or complete initPoa step first.');
-  }
-  if (!effectiveBootnodeEnr) {
-    throw new Error('Bootnode ENR is required. Provide bootnodeEnr parameter or complete initBootnode step first.');
-  }
-
-  const context = buildContextFromNetwork(network);
-  console.log(`[${networkName}] Starting initBeacon...`);
-  const result = await initBeacon({
-    poaEnode: effectivePoaEnode,
-    bootnodeEnr: effectiveBootnodeEnr,
-    context,
-  });
-  updateNetworkStep(networkName, 'initBeacon', result);
-  console.log(`[${networkName}] initBeacon completed:`, result);
-  return result;
+  return executeInitBeaconBootnode(networkName, poaEnode, bootnodeEnr);
 }
 
 /**
- * Execute createDora step
+ * Create Dora explorer (not a step, just a node)
  */
 export async function executeCreateDora(networkName, clRpcUrl = null, elRpcUrl = null) {
   const network = getNetwork(networkName);
@@ -264,35 +305,50 @@ export async function executeCreateDora(networkName, clRpcUrl = null, elRpcUrl =
   const config = network.config || {};
   const clExplorer = config.clExplorer || getDefaultConfig().clExplorer;
   
+  // Try to get from bootnode array (first node should be beacon node)
+  const bootnodes = network.nodes?.bootnode || [];
+  const firstBootnode = bootnodes.length > 0 ? bootnodes.find(b => b.enode) || bootnodes[0] : null; // Find beacon node (has enode)
+  
+  // Backward compatibility: try old steps
+  const beaconBootnodeStep = network.steps.initBeaconBootnode;
   const beaconStep = network.steps.initBeacon;
-  const effectiveClRpcUrl = clRpcUrl || clExplorer.clRpcUrl || (beaconStep.status === 'completed' && beaconStep.data ? `http://${beaconStep.data.beaconIp}:3500` : null);
-  const effectiveElRpcUrl = elRpcUrl || clExplorer.elRpcUrl || (beaconStep.status === 'completed' && beaconStep.data ? `http://${beaconStep.data.beaconIp}:8545` : null);
+  
+  let beaconIp = null;
+  if (firstBootnode?.ip) {
+    beaconIp = firstBootnode.ip;
+  } else if (beaconBootnodeStep?.status === 'completed' && beaconBootnodeStep?.data?.beaconIp) {
+    beaconIp = beaconBootnodeStep.data.beaconIp;
+  } else if (beaconStep?.status === 'completed' && beaconStep?.data?.beaconIp) {
+    beaconIp = beaconStep.data.beaconIp;
+  }
+  
+  const effectiveClRpcUrl = clRpcUrl || clExplorer.clRpcUrl || (beaconIp ? `http://${beaconIp}:3500` : null);
+  const effectiveElRpcUrl = elRpcUrl || clExplorer.elRpcUrl || (beaconIp ? `http://${beaconIp}:8545` : null);
   
   if (!effectiveClRpcUrl || !effectiveElRpcUrl) {
-    throw new Error('CL RPC URL and EL RPC URL are required. Provide parameters or complete initBeacon step first.');
+    throw new Error('CL RPC URL and EL RPC URL are required. Provide parameters or ensure beacon node is available.');
   }
 
   const context = buildContextFromNetwork(network);
-  console.log(`[${networkName}] Starting createDora...`);
+  console.log(`[${networkName}] Creating Dora explorer...`);
   const result = await createDoraNode({
     clRpcUrl: effectiveClRpcUrl,
     elRpcUrl: effectiveElRpcUrl,
     context,
   });
-  updateNetworkStep(networkName, 'createDora', result);
   
-  // Update clExplorer config with RPC URLs
+  // Update clExplorer config with RPC URLs (no step update)
   updateNetworkConfig(networkName, 'clExplorer', {
     clRpcUrl: effectiveClRpcUrl,
     elRpcUrl: effectiveElRpcUrl,
   });
   
-  console.log(`[${networkName}] createDora completed:`, result);
+  console.log(`[${networkName}] Dora explorer created:`, result);
   return result;
 }
 
 /**
- * Execute createBlockscout step
+ * Create Blockscout explorer (not a step, just a node)
  */
 export async function executeCreateBlockscout(networkName, elRpcUrl = null) {
   const network = getNetwork(networkName);
@@ -306,15 +362,11 @@ export async function executeCreateBlockscout(networkName, elRpcUrl = null) {
   const elExplorer = config.elExplorer || getDefaultConfig().elExplorer;
   
   const poaStep = network.steps.initPoa;
-  // Get clique RPC as default (used when creating blockscout in initial flow)
+  // Get clique RPC as default
   const cliqueRpc =
     poaStep.status === 'completed' && poaStep.data ? `http://${poaStep.data.cliqueIp}:8545` : null;
   
   // Priority: explicit parameter > config elRpcUrl (if set) > clique RPC > env var
-  // If elRpcUrl is explicitly provided, use it
-  // Otherwise, if elExplorer.elRpcUrl is set and not empty, use it
-  // Otherwise, use clique RPC as default (for initial flow)
-  // Finally, fallback to env var
   let effectiveElRpcUrl = null;
   if (elRpcUrl) {
     effectiveElRpcUrl = elRpcUrl;
@@ -327,7 +379,7 @@ export async function executeCreateBlockscout(networkName, elRpcUrl = null) {
   }
   
   if (!effectiveElRpcUrl) {
-    throw new Error('EL RPC URL is required. Provide parameter or complete initPoa step first.');
+    throw new Error('EL RPC URL is required. Provide parameter or ensure POA node is available.');
   }
   
   // Support both old and new config structure
@@ -335,7 +387,7 @@ export async function executeCreateBlockscout(networkName, elRpcUrl = null) {
   const networkId = elExplorer.networkId || el.networkId || config.networkId || 84;
   const networkNameConfig = elExplorer.networkName || el.networkName || config.networkName || `${networkName} Network`;
   
-  console.log(`[${networkName}] Starting createBlockscout...`);
+  console.log(`[${networkName}] Creating Blockscout explorer...`);
   if (cliqueRpc && effectiveElRpcUrl === cliqueRpc) {
     console.log(`[${networkName}] Using Clique node RPC as default: ${effectiveElRpcUrl}`);
   } else {
@@ -348,21 +400,21 @@ export async function executeCreateBlockscout(networkName, elRpcUrl = null) {
     context,
   });
   
-  // Update elExplorer config with RPC URL and node IP
+  // Update elExplorer config with RPC URL and node IP (no step update)
   const updates = {elRpcUrl: effectiveElRpcUrl};
   if (result.blockscoutIp) {
     updates.publicHost = result.blockscoutIp;
   }
   updateNetworkConfig(networkName, 'elExplorer', updates);
-  updateNetworkStep(networkName, 'createBlockscout', result);
-  console.log(`[${networkName}] createBlockscout completed:`, result);
+  
+  console.log(`[${networkName}] Blockscout explorer created:`, result);
   return result;
 }
 
 /**
  * Execute createValidators step - create a single validator node
  */
-export async function executeCreateValidator(networkName, validatorKeyJson, validatorPassword, nodeName = null, poaEnode = null, bootnodeEnr = null) {
+export async function executeCreateValidator(networkName, validatorKeyJson, validatorPassword, nodeName = null, poaEnode = null, bootnodeEnr = null, beaconBootnodeEnode = null) {
   const network = getNetwork(networkName);
   if (!network) {
     throw new Error(`Network "${networkName}" not found`);
@@ -372,13 +424,27 @@ export async function executeCreateValidator(networkName, validatorKeyJson, vali
   const bootnodeStep = network.steps.initBootnode;
   
   const effectivePoaEnode = poaEnode || (poaStep.status === 'completed' && poaStep.data ? poaStep.data.cliqueEnode : null);
-  const effectiveBootnodeEnr = bootnodeEnr || (bootnodeStep.status === 'completed' && bootnodeStep.data ? bootnodeStep.data.bootnodeEnr : null);
+  
+  // Get bootnode array - first node should be beacon node (has enode for EL, enr for CL)
+  const bootnodes = network.nodes?.bootnode || [];
+  const firstBootnode = bootnodes.length > 0 ? bootnodes[0] : null;
+  
+  // Get ENR from step or first bootnode in array
+  const effectiveBootnodeEnr = bootnodeEnr || 
+    (bootnodeStep.status === 'completed' && bootnodeStep.data ? bootnodeStep.data.bootnodeEnr : null) ||
+    (firstBootnode?.enr || null);
+  
+  // Get beacon enode from first bootnode in array (beacon node)
+  const effectiveBeaconBootnodeEnode = beaconBootnodeEnode || (firstBootnode?.enode || null);
   
   if (!effectivePoaEnode) {
     throw new Error('POA enode is required. Provide poaEnode parameter or complete initPoa step first.');
   }
   if (!effectiveBootnodeEnr) {
-    throw new Error('Bootnode ENR is required. Provide bootnodeEnr parameter or complete initBootnode step first.');
+    throw new Error('Bootnode ENR is required. Provide bootnodeEnr parameter or ensure bootnode is created.');
+  }
+  if (!effectiveBeaconBootnodeEnode) {
+    throw new Error('Beacon bootnode ENODE is required. Please create beacon node first (it will be added to bootnode array).');
   }
 
   if (!validatorKeyJson) {
@@ -479,8 +545,8 @@ date | tee -a /var/log/startup-script.log
         validatorPassword,
         validatorKeyJson: `'${validatorKeyJson.replace(/'/g, "'\\''")}'`,
         envOverrides: {
-          EL_BOOTNODES: effectivePoaEnode,
-          CL_BOOTNODE_ENR: effectiveBootnodeEnr,
+          EL_BOOTNODES: effectiveBeaconBootnodeEnode, // Validators peer to beacon node's EL enode (from bootnode array)
+          CL_BOOTNODE_ENR: effectiveBootnodeEnr, // Validators peer to bootnode ENR for CL (from bootnode array)
           ...(context?.envOverrides?.beacon || {}),
           // Apply all fork configs from network (includes CL configs and fork updates)
           ...getNodeForkConfig(network),
@@ -506,12 +572,24 @@ date | tee -a /var/log/startup-script.log
 }
 
 /**
- * Update Blockscout (e.g., change EL RPC URL)
+ * Update Blockscout (e.g., change EL RPC URL and block transformer)
  */
-export async function executeUpdateBlockscout(networkName, elRpcUrl, networkId = null, networkNameDisplay = null) {
+export async function executeUpdateBlockscout(networkName, elRpcUrl, blockTransformer = null, networkId = null, networkNameDisplay = null) {
   const network = getNetwork(networkName);
   if (!network) {
     throw new Error(`Network "${networkName}" not found`);
+  }
+
+  // Get existing blockscout node
+  const blockscoutNodes = network.nodes?.blockscout || [];
+  if (!blockscoutNodes || blockscoutNodes.length === 0) {
+    throw new Error(`No blockscout nodes found for network "${networkName}". Please create blockscout first.`);
+  }
+
+  // Use the first blockscout node (or the latest one)
+  const blockscoutNode = blockscoutNodes[blockscoutNodes.length - 1];
+  if (!blockscoutNode.ip) {
+    throw new Error(`Blockscout node "${blockscoutNode.name}" does not have an IP address`);
   }
 
   const context = buildContextFromNetwork(network);
@@ -528,34 +606,42 @@ export async function executeUpdateBlockscout(networkName, elRpcUrl, networkId =
     throw new Error('EL RPC URL is required to update Blockscout');
   }
 
-  console.log(`[${networkName}] Updating Blockscout with new EL RPC URL: ${elRpcUrl}`);
-  const result = await createBlockscoutNode({
-    elRpcUrl,
-    networkId: networkIdValue,
-    networkName: networkNameValue,
-    context,
-  });
+  console.log(`[${networkName}] Updating Blockscout node "${blockscoutNode.name}" at ${blockscoutNode.ip}...`);
+  console.log(`[${networkName}] New EL RPC URL: ${elRpcUrl}`);
+  if (blockTransformer) {
+    console.log(`[${networkName}] New block transformer: ${blockTransformer}`);
+  }
 
-  // Update elExplorer config with new RPC URL and IP
+  // Build env updates
+  const envUpdates = {
+    BLOCKSCOUT_EL_RPC_URL: elRpcUrl,
+    BLOCKSCOUT_TRACE_URL: elRpcUrl,
+    BLOCKSCOUT_NETWORK_ID: String(networkIdValue),
+    BLOCKSCOUT_NETWORK_NAME: `'${networkNameValue}'`,
+  };
+
+  // Update block transformer if provided
+  if (blockTransformer) {
+    envUpdates.BLOCKSCOUT_BLOCK_TRANSFORMER = blockTransformer;
+  }
+
+  // SSH in and update
+  const sshConfig = buildSshConfig(blockscoutNode.ip, context);
+  await updateBlockscout(sshConfig, blockscoutNode, envUpdates);
+
+  // Update elExplorer config with new RPC URL
   const updates = {elRpcUrl};
-  if (result.blockscoutIp) {
-    updates.publicHost = result.blockscoutIp;
+  if (blockTransformer) {
+    updates.blockTransformer = blockTransformer;
   }
   updateNetworkConfig(networkName, 'elExplorer', updates);
 
-  // Record as blockscout step and append node
-  updateNetworkStep(networkName, 'createBlockscout', result);
-  const existing = network.nodes?.blockscout || [];
-  existing.push({name: `blockscout-${existing.length + 1}`, ip: result.blockscoutIp || null});
-  network.nodes.blockscout = existing;
-  saveNetwork(networkName, network);
-
-  console.log(`[${networkName}] Blockscout update completed:`, result);
-  return result;
+  console.log(`[${networkName}] Blockscout update completed successfully`);
+  return {success: true, node: blockscoutNode};
 }
 
 /**
- * Execute initial network creation flow (only initPoa and createBlockscout)
+ * Execute initial network creation flow (only initPoa)
  */
 export async function executeInitialFlow(networkName) {
   const steps = [];
@@ -565,17 +651,14 @@ export async function executeInitialFlow(networkName) {
     steps.push('initPoa');
     await executeInitPoa(networkName);
 
-    // Step 2: createBlockscout
-    steps.push('createBlockscout');
-    await executeCreateBlockscout(networkName);
-
     // Update network status
     const network = getNetwork(networkName);
     network.status = 'initialized';
     saveNetwork(networkName, network);
 
     console.log(`\n[${networkName}] Initial flow completed successfully!`);
-    console.log(`[${networkName}] Next steps: Deploy deposit contract, then create bootnode, beacon, dora, and validators.`);
+    console.log(`[${networkName}] Next steps: Deploy deposit contract, then create bootnode, beacon bootnode, and validators.`);
+    console.log(`[${networkName}] You can also create Blockscout or Dora explorers from the menu.`);
     return {success: true, steps};
   } catch (error) {
     console.error(`[${networkName}] Error in step ${steps[steps.length - 1]}:`, error.message);
@@ -701,8 +784,9 @@ export async function addBeaconNode(networkName, nodeName = null) {
   }
 
   const context = buildContextFromNetwork(network);
-  const existingNodes = network.nodes?.beaconNodes || [];
-  const nodeIndex = existingNodes.length + 1;
+  // Count beacon nodes (not bootnodes)
+  const existingBeaconNodes = network.nodes?.beacon || [];
+  const nodeIndex = existingBeaconNodes.length + 1;
   const vmName = nodeName || `beacon-node-${nodeIndex}`;
 
   console.log(`[${networkName}] Creating new beacon node: ${vmName}...`);
@@ -713,6 +797,14 @@ export async function addBeaconNode(networkName, nodeName = null) {
 
   const BEACON_TCP_PORTS = [22, 3500, 9000, 9001, 8545, 8546, 30303];
   const BEACON_UDP_PORTS = [30303, 9000, 9001];
+
+  // Get bootnode info from bootnode array
+  const bootnodesForBeacon = network.nodes?.bootnode || [];
+  const firstBootnodeForBeacon = bootnodesForBeacon.length > 0 ? bootnodesForBeacon[0] : null;
+  const effectivePoaEnode = poaEnode || (poaStep.status === 'completed' && poaStep.data ? poaStep.data.cliqueEnode : null);
+  const effectiveBootnodeEnr = bootnodeEnr || 
+    (bootnodeStep.status === 'completed' && bootnodeStep.data ? bootnodeStep.data.bootnodeEnr : null) ||
+    (firstBootnodeForBeacon?.enr || null);
 
   function buildBeaconStartupScript({poaEnode, bootnodeEnr, envOverrides = {}}) {
     const envContent = buildEnvContent({...DEFAULT_REMOTE_ENV, ...envOverrides});
@@ -833,7 +925,8 @@ date | tee -a /var/log/startup-script.log
     enode: beaconEnode,
   };
 
-  addNodeToNetwork(networkName, 'beaconNodes', nodeData);
+  // Add to beacon array (not bootnode array)
+  addNodeToNetwork(networkName, 'beacon', nodeData);
   console.log(`[${networkName}] Beacon node added successfully`);
   return nodeData;
 }
@@ -868,38 +961,32 @@ export async function updateForkForAllNodes(networkName, envUpdates, delayMs = n
   // Helper function to wait
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  // Update main beacon node
-  if (network.nodes?.beacon && network.nodes.beacon.length > 0) {
-    for (let i = 0; i < network.nodes.beacon.length; i++) {
-      const node = network.nodes.beacon[i];
-      if (!node.ip) continue;
-      try {
-        const sshConfig = buildSshConfig(node.ip, context);
-        await updateBeacon(sshConfig, node, envUpdates);
-        console.log(`[${networkName}] ✓ Updated beacon node: ${node.name}`);
-        // Add delay before next beacon node (except for the last one)
-        if (i < network.nodes.beacon.length - 1) {
-          console.log(`[${networkName}] Waiting ${defaultBeaconDelay / 1000}s before next update...`);
-          await wait(defaultBeaconDelay);
-        }
-      } catch (error) {
-        console.error(`[${networkName}] ✗ Failed to update beacon node ${node.name}:`, error.message);
-        errors.push({node: node.name, error: error.message});
-      }
+  // Update beacon node in bootnode array (first node with enode)
+  const bootnodes = network.nodes?.bootnode || [];
+  const beaconBootnode = bootnodes.find(b => b.enode);
+  if (beaconBootnode && beaconBootnode.ip) {
+    try {
+      const sshConfig = buildSshConfig(beaconBootnode.ip, context);
+      await updateBeacon(sshConfig, beaconBootnode, envUpdates);
+      console.log(`[${networkName}] ✓ Updated beacon bootnode: ${beaconBootnode.name}`);
+    } catch (error) {
+      console.error(`[${networkName}] ✗ Failed to update beacon bootnode ${beaconBootnode.name}:`, error.message);
+      errors.push({node: beaconBootnode.name, error: error.message});
     }
   }
 
-  // Update additional beacon nodes
-  if (network.nodes?.beaconNodes && network.nodes.beaconNodes.length > 0) {
-    for (let i = 0; i < network.nodes.beaconNodes.length; i++) {
-      const node = network.nodes.beaconNodes[i];
+  // Update additional beacon nodes (not bootnodes)
+  const beaconNodes = network.nodes?.beacon || [];
+  if (beaconNodes.length > 0) {
+    for (let i = 0; i < beaconNodes.length; i++) {
+      const node = beaconNodes[i];
       if (!node.ip) continue;
       try {
         const sshConfig = buildSshConfig(node.ip, context);
         await updateBeacon(sshConfig, node, envUpdates);
         console.log(`[${networkName}] ✓ Updated beacon node: ${node.name}`);
         // Add delay before next beacon node (except for the last one)
-        if (i < network.nodes.beaconNodes.length - 1) {
+        if (i < beaconNodes.length - 1) {
           console.log(`[${networkName}] Waiting ${defaultBeaconDelay / 1000}s before next update...`);
           await wait(defaultBeaconDelay);
         }
