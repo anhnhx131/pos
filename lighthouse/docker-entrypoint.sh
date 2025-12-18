@@ -15,6 +15,11 @@ if [ -n "${CL_GENESIS_STATE_URL}" ]; then
   set -- "$@" "--checkpoint-sync-url=${CL_GENESIS_STATE_URL}"
 fi
 
+# Archive mode
+if [ "${CL_ARCHIVE_MODE:-false}" = "true" ]; then
+  set -- "$@" "--disable-backfill-rate-limiting --reconstruct-historic-states"
+fi
+
 # Add extra arguments from CL_EXTRAS if provided
 if [ -n "${CL_EXTRAS}" ]; then
   # Split CL_EXTRAS by spaces and add each as a separate argument
