@@ -751,10 +751,14 @@ async function addBeaconNodeMenu() {
   }
 
   const nodeName = await prompt('Node name (leave empty for auto-generated): ') || null;
+  const archiveMode = await confirm('Enable archive mode? (CL_ARCHIVE_MODE=true)', false);
 
   console.log(`\nAdding beacon node to network: ${selected}`);
   if (nodeName) {
     console.log(`Node name: ${nodeName}`);
+  }
+  if (archiveMode) {
+    console.log(`Archive mode: enabled (CL_ARCHIVE_MODE=true)`);
   }
 
   const confirmed = await confirm('Proceed?', true);
@@ -763,7 +767,7 @@ async function addBeaconNodeMenu() {
   }
 
   try {
-    const result = await addBeaconNode(selected, nodeName);
+    const result = await addBeaconNode(selected, nodeName, archiveMode);
     console.log(`\nBeacon node added successfully!`);
     console.log(`  Name: ${result.name}`);
     console.log(`  IP: ${result.ip}`);
@@ -850,32 +854,36 @@ async function addValidatorNodeMenu() {
       break;
     }
 
-    console.log('\nEnter validator key JSON:');
-    console.log('  Option 1: Enter file path to validator key JSON file');
-    console.log('  Option 2: Paste JSON content (paste all at once, then press Enter)');
+    // console.log('\nEnter validator key JSON:');
+    // console.log('  Option 1: Enter file path to validator key JSON file');
+    // console.log('  Option 2: Paste JSON content (paste all at once, then press Enter)');
     
-    const inputMethod = await prompt('\nChoose method [1=file, 2=paste]: ') || '1';
+    // const inputMethod = await prompt('\nChoose method [1=file, 2=paste]: ') || '1';
     
     let validatorKeyJson = '';
-    
-    if (inputMethod === '1') {
-      const filePath = await prompt('Enter file path to validator key JSON: ');
-      if (!filePath) {
-        console.log('File path is required');
-        continue;
-      }
-      try {
-        const fs = (await import('fs')).default;
-        validatorKeyJson = fs.readFileSync(filePath, 'utf8').trim();
-      } catch (error) {
-        console.log(`Error reading file: ${error.message}`);
-        continue;
-      }
-    } else {
-      console.log('\nPaste validator key JSON (paste the entire JSON, then press Enter):');
-      validatorKeyJson = await prompt('');
-      validatorKeyJson = validatorKeyJson.trim();
-    }
+
+    console.log('\nPaste validator key JSON (paste the entire JSON, then press Enter):');
+    validatorKeyJson = await prompt('');
+    validatorKeyJson = validatorKeyJson.trim();
+
+    // if (inputMethod === '1') {
+    //   const filePath = await prompt('Enter file path to validator key JSON: ');
+    //   if (!filePath) {
+    //     console.log('File path is required');
+    //     continue;
+    //   }
+    //   try {
+    //     const fs = (await import('fs')).default;
+    //     validatorKeyJson = fs.readFileSync(filePath, 'utf8').trim();
+    //   } catch (error) {
+    //     console.log(`Error reading file: ${error.message}`);
+    //     continue;
+    //   }
+    // } else {
+    //   console.log('\nPaste validator key JSON (paste the entire JSON, then press Enter):');
+    //   validatorKeyJson = await prompt('');
+    //   validatorKeyJson = validatorKeyJson.trim();
+    // }
 
     if (!validatorKeyJson) {
       console.log('Validator key JSON is required');
@@ -982,7 +990,7 @@ async function updateClConfigMenu() {
     CL_DEPOSIT_BLOCK: clCurrent.CL_DEPOSIT_BLOCK ?? 0,
     CL_GENESIS_STATE_URL: clCurrent.CL_GENESIS_STATE_URL || '(not set)',
     CL_SECONDS_PER_SLOT: clCurrent.CL_SECONDS_PER_SLOT ?? 5,
-    CL_SLOTS_PER_EPOCH: clCurrent.CL_SLOTS_PER_EPOCH ?? 5,
+    CL_SLOTS_PER_EPOCH: clCurrent.CL_SLOTS_PER_EPOCH ?? 16,
     CL_SECONDS_PER_ETH1_BLOCK: clCurrent.CL_SECONDS_PER_ETH1_BLOCK ?? 5,
   });
 
@@ -994,7 +1002,7 @@ async function updateClConfigMenu() {
   const currentDepositBlock = clCurrent.CL_DEPOSIT_BLOCK ?? 0;
   const currentGenesisStateUrl = clCurrent.CL_GENESIS_STATE_URL || '';
   const currentSecondsPerSlot = clCurrent.CL_SECONDS_PER_SLOT ?? 5;
-  const currentSlotsPerEpoch = clCurrent.CL_SLOTS_PER_EPOCH ?? 5;
+  const currentSlotsPerEpoch = clCurrent.CL_SLOTS_PER_EPOCH ?? 16;
   const currentSecondsPerEth1Block = clCurrent.CL_SECONDS_PER_ETH1_BLOCK ?? 5;
   
   const clDepositContractAddress = await prompt(`CL Deposit Contract Address [${currentDepositContract}]: `);
@@ -1400,9 +1408,9 @@ async function updateForkMenu() {
   const canAutoCalculate = beaconRpcUrl !== null;
 
   // Display current values
+  // Note: EL_TERMINAL_TOTAL_DIFFICULTY and CL_TERMINAL_TOTAL_DIFFICULTY are merged (same value)
   const commonForkVars = [
-    'EL_TERMINAL_TOTAL_DIFFICULTY',
-    'CL_TERMINAL_TOTAL_DIFFICULTY',
+    'TERMINAL_TOTAL_DIFFICULTY', // Merged: applies to both EL and CL
     'EL_SHANGHAI_TIME',
     'CL_CAPELLA_FORK_EPOCH',
     'EL_CANCUN_TIME',
@@ -1414,14 +1422,25 @@ async function updateForkMenu() {
   ];
 
   console.log('\nCurrent fork configuration:');
-  const hasCurrentValues = commonForkVars.some(key => currentForkConfig[key]);
-  if (hasCurrentValues) {
+  // Show TERMINAL_TOTAL_DIFFICULTY (merged) or individual values
+  const elTtd = currentForkConfig.EL_TERMINAL_TOTAL_DIFFICULTY;
+  const clTtd = currentForkConfig.CL_TERMINAL_TOTAL_DIFFICULTY;
+  const mergedTtd = elTtd || clTtd;
+  
+  if (mergedTtd) {
+    console.log(`  TERMINAL_TOTAL_DIFFICULTY=${mergedTtd} (applies to both EL and CL)`);
+  }
+  
+  const hasOtherValues = commonForkVars.filter(key => key !== 'TERMINAL_TOTAL_DIFFICULTY').some(key => currentForkConfig[key]);
+  if (hasOtherValues) {
     commonForkVars.forEach(key => {
-      if (currentForkConfig[key]) {
+      if (key !== 'TERMINAL_TOTAL_DIFFICULTY' && currentForkConfig[key]) {
         console.log(`  ${key}=${currentForkConfig[key]}`);
       }
     });
-  } else {
+  }
+  
+  if (!mergedTtd && !hasOtherValues) {
     console.log('  (no fork configuration set yet)');
   }
 
@@ -1430,10 +1449,14 @@ async function updateForkMenu() {
   console.log('Leave value empty to keep current value');
   console.log('\nCommon fork variables:');
   commonForkVars.forEach(key => {
-    const note = key.includes('SHANGHAI') ? ' (auto-calculated from CL_CAPELLA_FORK_EPOCH)' :
-                 key.includes('CANCUN') ? ' (auto-calculated from CL_DENEB_FORK_EPOCH)' :
-                 key.includes('PRAGUE') ? ' (auto-calculated from CL_ELECTRA_FORK_EPOCH)' : '';
-    console.log(`  - ${key}${note}`);
+    if (key === 'TERMINAL_TOTAL_DIFFICULTY') {
+      console.log(`  - ${key} (applies to both EL_TERMINAL_TOTAL_DIFFICULTY and CL_TERMINAL_TOTAL_DIFFICULTY)`);
+    } else {
+      const note = key.includes('SHANGHAI') ? ' (auto-calculated from CL_CAPELLA_FORK_EPOCH)' :
+                   key.includes('CANCUN') ? ' (auto-calculated from CL_DENEB_FORK_EPOCH and ethereum/client-go:v1.13.15)' :
+                   key.includes('PRAGUE') ? ' (auto-calculated from CL_ELECTRA_FORK_EPOCH and ethereum/client-go:v1.15.9)' : '';
+      console.log(`  - ${key}${note}`);
+    }
   });
   
   if (canAutoCalculate) {
@@ -1483,7 +1506,21 @@ async function updateForkMenu() {
       continue;
     }
 
-    envUpdates[key] = value;
+    // Handle merged TERMINAL_TOTAL_DIFFICULTY (applies to both EL and CL)
+    if (key === 'TERMINAL_TOTAL_DIFFICULTY') {
+      envUpdates.EL_TERMINAL_TOTAL_DIFFICULTY = value;
+      envUpdates.CL_TERMINAL_TOTAL_DIFFICULTY = value;
+      console.log(`  Set both EL_TERMINAL_TOTAL_DIFFICULTY and CL_TERMINAL_TOTAL_DIFFICULTY = ${value}`);
+    } else {
+      // Handle backward compatibility: if user enters EL_TERMINAL_TOTAL_DIFFICULTY or CL_TERMINAL_TOTAL_DIFFICULTY
+      if (key === 'EL_TERMINAL_TOTAL_DIFFICULTY' || key === 'CL_TERMINAL_TOTAL_DIFFICULTY') {
+        envUpdates.EL_TERMINAL_TOTAL_DIFFICULTY = value;
+        envUpdates.CL_TERMINAL_TOTAL_DIFFICULTY = value;
+        console.log(`  Set both EL_TERMINAL_TOTAL_DIFFICULTY and CL_TERMINAL_TOTAL_DIFFICULTY = ${value} (merged)`);
+      } else {
+        envUpdates[key] = value;
+      }
+    }
 
     // Auto-calculate EL time if CL epoch is provided
     if (canAutoCalculate && epochToTimeMapping[key] && !envUpdates[epochToTimeMapping[key]]) {
@@ -1655,7 +1692,7 @@ async function updateConfigSection(networkName, section) {
       const depositBlock = await prompt(`CL Deposit Block [${current.CL_DEPOSIT_BLOCK || 0}]: `);
       const genesisStateUrl = await prompt(`CL Genesis State URL [${current.CL_GENESIS_STATE_URL || ''}]: `);
       const secondsPerSlot = await prompt(`CL Seconds Per Slot [${current.CL_SECONDS_PER_SLOT || 5}]: `);
-      const slotsPerEpoch = await prompt(`CL Slots Per Epoch [${current.CL_SLOTS_PER_EPOCH || 5}]: `);
+      const slotsPerEpoch = await prompt(`CL Slots Per Epoch [${current.CL_SLOTS_PER_EPOCH || 16}]: `);
       const secondsPerEth1Block = await prompt(`CL Seconds Per Eth1 Block [${current.CL_SECONDS_PER_ETH1_BLOCK || 5}]: `);
       const lighthouseImage = await prompt(`Lighthouse Image [${current.LH_IMAGE || 'sigp/lighthouse:v7.0.1'}]: `);
       if (depositContract) updates.CL_DEPOSIT_CONTRACT_ADDRESS = depositContract;

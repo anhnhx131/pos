@@ -425,6 +425,12 @@ export async function executeCreateBlockscout(networkName, elRpcUrl = null) {
     updates.publicHost = result.blockscoutIp;
   }
   updateNetworkConfig(networkName, 'elExplorer', updates);
+
+  const nodeData = {
+    name: 'blockscout',
+    ip: result.blockscoutIp,
+  };
+  addNodeToNetwork(networkName, 'blockscout', nodeData);
   
   console.log(`[${networkName}] Blockscout explorer created:`, result);
   return result;
@@ -787,7 +793,7 @@ export async function addExecutionNode(networkName, nodeName = null) {
 /**
  * Add a new beacon node
  */
-export async function addBeaconNode(networkName, nodeName = null) {
+export async function addBeaconNode(networkName, nodeName = null, archiveMode = false) {
   const network = getNetwork(networkName);
   if (!network) {
     throw new Error(`Network "${networkName}" not found`);
@@ -923,6 +929,8 @@ date | tee -a /var/log/startup-script.log
           ...(context?.envOverrides?.beacon || {}),
           // Apply all fork configs from network (includes CL configs and fork updates)
           ...getNodeForkConfig(network),
+          // Add archive mode if requested
+          ...(archiveMode ? {CL_ARCHIVE_MODE: 'true'} : {}),
         },
       }),
     tcpPorts: BEACON_TCP_PORTS,

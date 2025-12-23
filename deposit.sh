@@ -1,18 +1,72 @@
-# validators 
+# validators
 
-# [
-#   {
-#     "pubkey": "b4c11c9af18fb31b77db30ac6262a6f39e1a629255a0d8357007788cb1bfb7dfc1bc3279c28ace6ab8634f02707baa75",
-#     "withdrawal_credentials": "0100000000000000000000008a954052c8425bed5498fc62e8a8b2da81cfee04",
-#     "amount": 32000000000,
-#     "signature": "a7a98e26f4cd67336ecfe5d4f9d251af31825fac80eed47f343f0a52eee82427243ece2671b28c81a4a347162e13ea11107e26a894fd64eaa09ae3c983ff23f7c0fdc271f5746a6a901a69347859b7e73af0fc01d8ae7cace193f737d922db38",
-#     "deposit_message_root": "13b1180b9797d7b03feff781bbceecd6f3d77e7f411233060aefcabca93c0c1a",
-#     "deposit_data_root": "c83d9c5d501341e1af455758b5ed170a144ccfdc279b37e245476c88903de9a9",
-#     "fork_version": "00000084",
-#     "network_name": "joc",
-#     "deposit_cli_version": "1.2.2"
-#   }
-# ]
+KEYSOTRES='[
+  {
+    "pubkey": "a4a4d0c193924d29d613b3b0f9d6eeb91492810920bf8c75b3709367dcfd0d5a79de79f0a4b12f2caed6b1c8e125ee7c",
+    "withdrawal_credentials": "010000000000000000000000b1ee8fc20d7ac4af4568aa46623a55ec31e0822a",
+    "amount": 32000000000,
+    "signature": "a5d163855f4ed2721ed088a7e626dacda1247c086853e98945c1e4185ce0077dfd3795ba89fe299f10ae12658ff66bbe0dfec08d99f342d1378e681e90972664275879be370164e9dec47d800d51c91773d69eabe20524abecb0db69ea639406",
+    "deposit_message_root": "a5ab2a15bd60c8c57127cea2c33af9b7eb94deefc54e1cdaf793766d5a399edb",
+    "deposit_data_root": "538370a7ab10a451f102f438f4860f643c96c813629602c7532feb42529ea455",
+    "fork_version": "00000084",
+    "network_name": "joc",
+    "deposit_cli_version": "1.2.2"
+  },
+  {
+    "pubkey": "800455cdab11a2c2e41f8a6b2028dafeb73ce8c59d1fb5ea0c07567361a2e0008036c1dc2c1301642187cbe6218886b7",
+    "withdrawal_credentials": "010000000000000000000000b1ee8fc20d7ac4af4568aa46623a55ec31e0822a",
+    "amount": 32000000000,
+    "signature": "b60194bae7358a94e61c3df75312e57fbffb9991a29f719b6ede732433c5f6350a589f25d919ced41e018fd3c44830f1119e2bef3f55669c87139794e6a347368645102dac6934d76f80565e9baa298f89f633a720164375e0cd111b2c4f7cc0",
+    "deposit_message_root": "dd4d342bd867589d6fa7bf6f504c7203193bb750bb4b2b0ef26c787f852d8812",
+    "deposit_data_root": "2b2c6da5eb46f1abbd3342d47ce7d5eded256ed4bd5acedf80fda0650399176b",
+    "fork_version": "00000084",
+    "network_name": "joc",
+    "deposit_cli_version": "1.2.2"
+  },
+  {
+    "pubkey": "b7ece1e610d1a76c576695970226804885a643c48c64311a70ee63a3600e1d76e834c450c3ef1b655e1ae9be84d5be3e",
+    "withdrawal_credentials": "010000000000000000000000b1ee8fc20d7ac4af4568aa46623a55ec31e0822a",
+    "amount": 32000000000,
+    "signature": "901ffbe1d8b7072ae1571dba010e699fb75e02a3310c67cacf251eb5a0e32149556915de14c941acbbce9ca7a4f59fd21098564498ab08e60d06d1dae7a9122452f4636313d09e8183d7e543f7f0eec87b1e483eaaf1c9610ee38947bdda685a",
+    "deposit_message_root": "f213ce1f6eccd0a8f9c522d92033d9a67b79a250a3acc766ef75ee3ff1414cee",
+    "deposit_data_root": "cdac2e019a3d3d6350e25d837102b39b805f0c27e46e0cddaf0a7e2e75041ca4",
+    "fork_version": "00000084",
+    "network_name": "joc",
+    "deposit_cli_version": "1.2.2"
+  }
+]'
+
+PRIVATE_KEY=0x152cca97c7be44efa3a405fc53f8019403ecf780bdfc14755334493f74d5e816
+
+# Map từng phần tử trong mảng thành các lệnh deposit
+echo "$KEYSOTRES" | jq -c '.[]' | while read -r item; do
+  PUBKEY=$(echo "$item" | jq -r '.pubkey')
+  WITHDRAWAL_CREDENTIALS=$(echo "$item" | jq -r '.withdrawal_credentials')
+  SIGNATURE=$(echo "$item" | jq -r '.signature')
+  DEPOSIT_DATA_ROOT=$(echo "$item" | jq -r '.deposit_data_root')
+  
+  PRIVATE_KEY="$PRIVATE_KEY" \
+  PUBKEY="0x$PUBKEY" \
+  WITHDRAWAL_CREDENTIALS="0x$WITHDRAWAL_CREDENTIALS" \
+  SIGNATURE="0x$SIGNATURE" \
+  DEPOSIT_DATA_ROOT="0x$DEPOSIT_DATA_ROOT" \
+  sh interact-eth1/cli/deposit.sh
+done
+
+
+# PRIVATE_KEY=0x152cca97c7be44efa3a405fc53f8019403ecf780bdfc14755334493f74d5e816 \
+# PUBKEY=0xab6f42ce128888c79e290ee2711ecdffc655a9fbaeded5be286166d53963a3c36590cb4fea5318f5dae59bee236fa644 \
+# WITHDRAWAL_CREDENTIALS=0x010000000000000000000000b1ee8fc20d7ac4af4568aa46623a55ec31e0822a \
+# SIGNATURE=0xa24eee0c4c831454a9c7b54fbd4d8b8c237971e5aa0dcb7b92873fb24f044a0873eeaca28db8f20c2568c51eb2fd68e70feeed5f0384de0e370096686382fd85d6079d9b9dd6eb3ebcd7692917937d8abdbcc4d2d5457fb7ec91ee4f59be5130 \
+# DEPOSIT_DATA_ROOT=0x3a6756904083ab7fc2e1f1af6d336610a4d50e3717bb8eb45d28151f8f5c18ec \
+# sh interact-eth1/cli/deposit.sh
+
+# PRIVATE_KEY=0x152cca97c7be44efa3a405fc53f8019403ecf780bdfc14755334493f74d5e816 \
+# PUBKEY=0x951626f16769efd65fae2d085789c8de32216695834e697d22a1473f3e1ba93485edfab38897d2911940a3183dd01d1d \
+# WITHDRAWAL_CREDENTIALS=0x010000000000000000000000c57bb7b789a6c21d2242b0993b24f4f6297346f8 \
+# SIGNATURE=0x8e7cee8dff1b6bff292e11e9a6bee0e5883198e784bab0ff81dac3f8460784405fccb4ff26b07b2df16f5edc62735c78138ead95a0e64aaf2bb19d705f90ba323957ab8dcc857a909f7c1e2e5f012666b955296d8166a5507b66575fbc304781 \
+# DEPOSIT_DATA_ROOT=0xc923321cedc29ccb32bc9215eb65752e1ceb218cabea45611f78b2a068f808c8 \
+# sh interact-eth1/cli/deposit.sh
 
 
 # PRIVATE_KEY=0x152cca97c7be44efa3a405fc53f8019403ecf780bdfc14755334493f74d5e816 \
@@ -20,6 +74,13 @@
 # WITHDRAWAL_CREDENTIALS=0x0100000000000000000000008a954052c8425bed5498fc62e8a8b2da81cfee04 \
 # SIGNATURE=0xa7a98e26f4cd67336ecfe5d4f9d251af31825fac80eed47f343f0a52eee82427243ece2671b28c81a4a347162e13ea11107e26a894fd64eaa09ae3c983ff23f7c0fdc271f5746a6a901a69347859b7e73af0fc01d8ae7cace193f737d922db38 \
 # DEPOSIT_DATA_ROOT=0xc83d9c5d501341e1af455758b5ed170a144ccfdc279b37e245476c88903de9a9 \
+# sh interact-eth1/cli/deposit.sh
+
+# PRIVATE_KEY=0x152cca97c7be44efa3a405fc53f8019403ecf780bdfc14755334493f74d5e816 \
+# PUBKEY=0x869ca1bf61e291e84057b557bc68ec66813dfa038563abcf2c48fb5799b266175d3b757507e58ba5eba20ea5b4149d55 \
+# WITHDRAWAL_CREDENTIALS=0x010000000000000000000000fa247bfe9c3212ede48bac06ed2625bedd9b0740 \
+# SIGNATURE=0x8e0d151c6f17aeb17e36b65c99ffeeaacc5314abf4f980b55bfe218f647f76b3aebc36dbbc5fefeb9d1dbb1d15199a7016975a629b651df2dc017f6e1c96f368406922f7ce8cf0dafebeeb42c817ff542dfde3d8277f05f71d259cd5844d657d \
+# DEPOSIT_DATA_ROOT=0x4dc2d0c954a6775568ea111f8a152ecf5affa1ddc55aaeed671ec66fcd54a063 \
 # sh interact-eth1/cli/deposit.sh
 
 # PRIVATE_KEY=0x152cca97c7be44efa3a405fc53f8019403ecf780bdfc14755334493f74d5e816 \
