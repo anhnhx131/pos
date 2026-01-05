@@ -36,7 +36,7 @@ function getArgValue(flag) {
   return null;
 }
 
-export async function createBlockscoutNode({elRpcUrl, networkId, networkName, context} = {}) {
+export async function createBlockscoutNode({elRpcUrl, networkId, networkName, name="blockscout", context} = {}) {
   const effectiveElRpcUrl = elRpcUrl || process.env.EL_RPC_URL || getArgValue('--el-rpc-url');
   if (!effectiveElRpcUrl) {
     throw new Error('Missing EL RPC URL. Provide via EL_RPC_URL env or --el-rpc-url flag.');
@@ -63,7 +63,7 @@ export async function createBlockscoutNode({elRpcUrl, networkId, networkName, co
   };
 
   const blockscoutInstance = await createGcpVm({
-    ...buildVmOptions(effectiveContext, 'blockscout'),
+    ...buildVmOptions(effectiveContext, name),
     machineType: 'e2-medium',
     bootDiskSize: '50GB',
     startupScriptBuilder: (params) =>

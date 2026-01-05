@@ -1,0 +1,55 @@
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100m
+      max-file: "3"
+      tag: '{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}'
+
+services:
+  execution:
+    restart: "unless-stopped"
+    image: ${NETHERMIND_DOCKER_IMAGE:-nethermind/nethermind:v1.25.2}
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - ./.eth/nethermind:/var/lib/nethermind
+      - ./nethermind/docker-entrypoint.sh:/entrypoint.sh
+      - ./.eth/ee-secret:/var/lib/nethermind/ee-secret
+      - ./.eth/nethermind/genesis.json:/var/lib/nethermind/genesis.json
+      - ./.eth/etc/localtime:/etc/localtime:ro
+    ports:
+      - ${HOST_IP:-}:${EL_RPC_PORT:-8545}:${EL_RPC_PORT:-8545}/tcp
+    networks:
+      default:
+        aliases:
+          - eth1
+          # This allows multiple Eth Docker stacks all connected to the same bridge network
+          - ${EL_ALIAS:-default-execution}
+    <<: *logging
+    entrypoint:
+      - /entrypoint.sh
+      - ./nethermind
+      - --datadir=/var/lib/nethermind
+      - --configs-dir=/var/lib/nethermind
+      - --config config 
+      - --log trace
+    labels:
+      - metrics.scrape=true
+      - metrics.path=/debug/metrics/prometheus
+      - metrics.port=6060
+      - metrics.instance=execution
+
+  set-prune-marker:
+    profiles: ["tools"]
+    image: alpine:3
+    user: "10001:10001"
+    restart: "no"
+    volumes:
+      - nethermind-data:/var/lib/nethermind
+    entrypoint: ["/bin/sh", "-c"]
+    command: /bin/sh
+
+networks:
+  default:
+    enable_ipv6: ${IPV6:-false}

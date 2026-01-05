@@ -1117,6 +1117,8 @@ async function createBlockscoutMenu() {
   const el = config.el || {};
   const elExplorer = config.elExplorer || {};
 
+  const name = await prompt(`Blockscout name [${elExplorer.name || 'blockscout'}]: `) || elExplorer.name || 'blockscout';
+
   const rpcInput = await prompt(`EL RPC URL [${elExplorer.elRpcUrl || cliqueRpc || 'required'}]: `);
   const elRpcUrl = rpcInput || elExplorer.elRpcUrl || cliqueRpc;
   if (!elRpcUrl) {
@@ -1137,7 +1139,7 @@ async function createBlockscoutMenu() {
   }
 
   try {
-    await executeCreateBlockscout(selected, elRpcUrl);
+    await executeCreateBlockscout(selected, elRpcUrl, name);
     console.log('\nBlockscout created successfully!');
   } catch (error) {
     console.error('\nError:', error.message);

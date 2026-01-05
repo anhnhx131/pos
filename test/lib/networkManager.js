@@ -369,7 +369,7 @@ export async function executeCreateDora(networkName, clRpcUrl = null, elRpcUrl =
 /**
  * Create Blockscout explorer (not a step, just a node)
  */
-export async function executeCreateBlockscout(networkName, elRpcUrl = null) {
+export async function executeCreateBlockscout(networkName, elRpcUrl = null, name) {
   const network = getNetwork(networkName);
   if (!network) {
     throw new Error(`Network "${networkName}" not found`);
@@ -404,7 +404,7 @@ export async function executeCreateBlockscout(networkName, elRpcUrl = null) {
   // Support both old and new config structure
   const el = config.el || {};
   const networkId = elExplorer.networkId || el.networkId || config.networkId || 84;
-  const networkNameConfig = elExplorer.networkName || el.networkName || config.networkName || `${networkName} Network`;
+  const networkNameConfig = `${name} Network`;
   
   console.log(`[${networkName}] Creating Blockscout explorer...`);
   if (cliqueRpc && effectiveElRpcUrl === cliqueRpc) {
@@ -416,6 +416,7 @@ export async function executeCreateBlockscout(networkName, elRpcUrl = null) {
     elRpcUrl: effectiveElRpcUrl,
     networkId,
     networkName: networkNameConfig,
+    name,
     context,
   });
   
@@ -427,10 +428,10 @@ export async function executeCreateBlockscout(networkName, elRpcUrl = null) {
   updateNetworkConfig(networkName, 'elExplorer', updates);
 
   const nodeData = {
-    name: 'blockscout',
+    name: name,
     ip: result.blockscoutIp,
   };
-  addNodeToNetwork(networkName, 'blockscout', nodeData);
+  addNodeToNetwork(networkName, "blockscout", nodeData);
   
   console.log(`[${networkName}] Blockscout explorer created:`, result);
   return result;
