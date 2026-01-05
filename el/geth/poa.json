@@ -17,23 +17,7 @@
     },
     "londonBlock": 0,
     "muirGlacierBlock": 0,
-    "berlinBlock": 0,
-    "terminalTotalDifficulty": 80,
-    "shanghaiTime": 9999999999999,
-    "cancunTime": 9999999999999,
-    "pragueTime": 9999999999999,
-    "blobSchedule": {
-      "cancun": {
-        "target": 3,
-        "max": 6,
-        "baseFeeUpdateFraction": 3338477
-      },
-      "prague": {
-        "target": 3,
-        "max": 6,
-        "baseFeeUpdateFraction": 3338477
-      }
-    }
+    "berlinBlock": 0
   },
   "nonce": "0x0",
   "timestamp": "0x0",

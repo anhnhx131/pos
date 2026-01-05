@@ -21,48 +21,80 @@ for (( i=0; i<$BOOT_NODES; i++ )); do
     --ip $BOOT_NODE_IP \
     -v $(pwd)/cl/bn$i:/data \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v7.0.1 \
+    sigp/lighthouse:v3.1.2 \
     lighthouse \
     boot_node \
     --datadir=/data \
     --testnet-dir=/config \
-    --disable-packet-filter \
-    --enable-enr-auto-update \
     --listen-address=$BOOT_NODE_IP \
-    --enr-address=$BOOT_NODE_IP
+    $BOOT_NODE_IP
 done
 
-# Start additional nodes dynamically
-for (( i=0; i<$NUM_NODES; i++ )); do
-  EL_NODE_IP="10.7.1.$((i+BOOT_NODES+2))"
-  EL_NODE_NAME="pos_node$i-el"
-  EL_NODE_PRIVATE_KEY=$(echo ${MINER_NODES[$i]} | jq -r .private_key)
-  EL_NODE_PUBLIC_KEY=$(echo ${MINER_NODES[$i]} | jq -r .public_key)
+# Start clique node
+EL_NODE_IP="10.7.1.$((BOOT_NODES+2))"
+EL_NODE_NAME="pos_clique_node-el"
+EL_NODE_PRIVATE_KEY=$(echo ${MINER_NODES[0]} | jq -r .private_key)
+EL_NODE_PUBLIC_KEY=$(echo ${MINER_NODES[0]} | jq -r .public_key)
+
+# define geth data dir
+mkdir -p $(pwd)/el/geth/.ethereum
+
+echo $POA_BOOT_NODE_KEY > $(pwd)/el/geth/.ethereum/boot.key
+
+# Create keystore
+echo $EL_NODE_PRIVATE_KEY > $(pwd)/el/geth/.ethereum/private.key
+echo "password" > $(pwd)/el/geth/.ethereum/password.txt
+
+docker run --rm \
+  -v $(pwd)/el/geth/.ethereum:/.ethereum \
+  ethereum/client-go:v1.11.5 \
+  account import --datadir /.ethereum --password /.ethereum/password.txt /.ethereum/private.key
+
+# Init node
+docker run --rm \
+  -v $(pwd)/el/geth/.ethereum:/.ethereum \
+  -v $(pwd)/el/geth/poa.json:/.genesis.json \
+  ethereum/client-go:v1.11.5 \
+  --datadir /.ethereum init /.genesis.json
+
+# Run geth node
+docker run -d \
+  --name $EL_NODE_NAME \
+  --network $DOCKER_NETWORK_NAME \
+  --ip $EL_NODE_IP \
+  -v $(pwd)/el/geth/.ethereum:/.ethereum \
+  ethereum/client-go:v1.11.5 \
+  --nat=extip:$EL_NODE_IP \
+  --http \
+  --http.api=eth,net,web3,debug,debug,engine,admin \
+  --http.addr=0.0.0.0 \
+  --http.corsdomain=* \
+  --http.vhosts=* \
+  --datadir=/.ethereum \
+  --allow-insecure-unlock \
+  --unlock=$EL_NODE_PUBLIC_KEY \
+  --miner.etherbase=$EL_NODE_PUBLIC_KEY \
+  --mine \
+  --networkid=84 \
+  --syncmode=full \
+  --password=/.ethereum/password.txt \
+  --rpc.allow-unprotected-txs \
+  --nodekey /.ethereum/boot.key
+
+# Run normal node
+for (( i=0; i<$NORMAL_NODES; i++ )); do
+  EL_NODE_IP="10.7.1.$((i+BOOT_NODES+3))"
+  EL_NODE_NAME="pos_normal_node$i-el"
   # beacon node
   BEACON_NODE_IP="10.7.2.$((i+BOOT_NODES+2))"
-  BEACON_NODE_NAME="pos_node$i-beacon"
-  # validator
-  VALIDATOR_NODE_IP="10.7.3.$((i+BOOT_NODES+2))"
-  VALIDATOR_NODE_NAME="pos_node$i-validator"
-  VALIDATOR_API_TOKEN=R6YhbDO6gKjNMydtZHcaCovFbQ0izq5Hk
+  BEACON_NODE_NAME="pos_normal_node$i-beacon"
 
   # define geth data dir
   mkdir -p $(pwd)/el/geth/.ethereum-$i
   echo $JWT_SECRET > $(pwd)/el/geth/.ethereum-$i/jwtsecret
 
   if [ "$i" -eq 0 ]; then
-    # Create keystore
-    echo $EL_NODE_PRIVATE_KEY > $(pwd)/el/geth/.ethereum-$i/private.key
-    echo "password" > $(pwd)/el/geth/.ethereum-$i/password.txt
-    
-    if [ $i == 0 ]; then
-      echo $BOOT_NODE_KEY > $(pwd)/el/geth/.ethereum-$i/boot.key
-    fi
-
-    docker run --rm \
-      -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
-      ethereum/client-go:v1.11.5 \
-      account import --datadir /.ethereum --password /.ethereum/password.txt /.ethereum/private.key
+    echo $BOOT_NODE_KEY > $(pwd)/el/geth/.ethereum-$i/boot.key
   fi
 
   # Init node
@@ -77,21 +109,18 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --name $EL_NODE_NAME \
     --network $DOCKER_NETWORK_NAME \
     --ip $EL_NODE_IP \
-    $( [ "$i" -eq 0 ] && echo "-p 8545:8545" ) \
+    $( [ "$i" -eq 1 ] && echo "-p 8545:8545" ) \
     -v $(pwd)/el/geth/.ethereum-$i:/.ethereum \
     ethereum/client-go:v1.11.5 \
     --nat=extip:$EL_NODE_IP \
     --http \
-    --bootnodes=$BOOT_NODE \
-    --http.api=eth,net,web3,debug,trace,engine,admin \
+    --bootnodes=$BOOT_NODE,$POS_EL_BOOT_NODE \
+    --http.api=eth,net,web3,debug,debug,engine,admin \
     --http.addr=0.0.0.0 \
     --http.corsdomain=* \
     --http.vhosts=* \
     --datadir=/.ethereum \
     --allow-insecure-unlock \
-    $([ "$i" -eq 0 ] && echo "--unlock=$EL_NODE_PUBLIC_KEY" || echo "") \
-    $([ "$i" -eq 0 ] && echo "--miner.etherbase=$EL_NODE_PUBLIC_KEY" || echo "") \
-    $([ "$i" -eq 0 ] && echo "--mine" || echo "") \
     --networkid=84 \
     --authrpc.vhosts=* \
     --authrpc.addr=0.0.0.0 \
@@ -100,7 +129,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --password=/.ethereum/password.txt \
     --rpc.allow-unprotected-txs \
     $([ "$i" -eq 0 ] && echo "--nodekey /.ethereum/boot.key" || echo "")
-  
+
   # Run beacon node
   docker run -d \
     --name $BEACON_NODE_NAME \
@@ -108,7 +137,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --ip $BEACON_NODE_IP \
     -p 350$i:3500 \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v7.0.1 \
+    sigp/lighthouse:v3.1.2 \
     lighthouse \
     beacon_node \
     --datadir=/data \
@@ -117,7 +146,6 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --http-address=0.0.0.0 \
     --http-port=3500 \
     --http-allow-origin=* \
-    --debug-level=debug \
     --execution-endpoint=http://$EL_NODE_IP:8551 \
     --execution-jwt=/config/jwtsecret \
     --testnet-dir=/config \
@@ -127,8 +155,83 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --listen-address=$BEACON_NODE_IP \
     --enr-tcp-port=9000 \
     --enr-udp-port=9000 \
-    --gui \
     --enable-private-discovery
+done
+
+# Start validators nodes dynamically
+for (( i=0; i<$VALIDATOR_NODES; i++ )); do
+  EL_NODE_IP="10.7.1.$((NORMAL_NODES+i+BOOT_NODES+3))"
+  EL_NODE_NAME="pos_validator_node$i-el"
+  # beacon node
+  BEACON_NODE_IP="10.7.2.$((NORMAL_NODES+i+BOOT_NODES+2))"
+  BEACON_NODE_NAME="pos_validator_node$i-beacon"
+  # validator
+  VALIDATOR_NODE_IP="10.7.3.$((NORMAL_NODES+i+BOOT_NODES+2))"
+  VALIDATOR_NODE_NAME="pos_validator_node$i-validator"
+  VALIDATOR_API_TOKEN=R6YhbDO6gKjNMydtZHcaCovFbQ0izq5Hk
+
+  # define geth data dir
+  mkdir -p $(pwd)/el/geth/.ethereum-val-$i
+  echo $JWT_SECRET > $(pwd)/el/geth/.ethereum-val-$i/jwtsecret
+
+  # Init node
+  docker run --rm \
+    -v $(pwd)/el/geth/.ethereum-val-$i:/.ethereum \
+    -v $(pwd)/el/geth/genesis.json:/.genesis.json \
+    ethereum/client-go:v1.11.5 \
+    --datadir /.ethereum init /.genesis.json
+
+  # Run geth node
+  docker run -d \
+    --name $EL_NODE_NAME \
+    --network $DOCKER_NETWORK_NAME \
+    --ip $EL_NODE_IP \
+    -v $(pwd)/el/geth/.ethereum-val-$i:/.ethereum \
+    ethereum/client-go:v1.11.5 \
+    --nat=extip:$EL_NODE_IP \
+    --http \
+    --bootnodes=$POS_EL_BOOT_NODE \
+    --http.api=eth,net,web3,debug,debug,engine,admin \
+    --http.addr=0.0.0.0 \
+    --http.corsdomain=* \
+    --http.vhosts=* \
+    --datadir=/.ethereum \
+    --allow-insecure-unlock \
+    --networkid=84 \
+    --authrpc.vhosts=* \
+    --authrpc.addr=0.0.0.0 \
+    --authrpc.jwtsecret=/.ethereum/jwtsecret \
+    --syncmode=full \
+    --password=/.ethereum/password.txt \
+    --rpc.allow-unprotected-txs
+
+  # Run beacon node
+  docker run -d \
+    --name $BEACON_NODE_NAME \
+    --network $DOCKER_NETWORK_NAME \
+    --ip $BEACON_NODE_IP \
+    $( [ "$i" -eq 0 ] && echo "-p 3505:3500" ) \
+    -v $(pwd)/cl/config:/config \
+    sigp/lighthouse:v3.1.2 \
+    lighthouse \
+    beacon_node \
+    --datadir=/data \
+    --eth1 \
+    --http \
+    --http-address=0.0.0.0 \
+    --http-port=3500 \
+    --http-allow-origin=* \
+    --execution-endpoint=http://$EL_NODE_IP:8551 \
+    --execution-jwt=/config/jwtsecret \
+    --testnet-dir=/config \
+    --boot-nodes=enr:-IS4QPOOGJE5V8GmhjshFUZ0pHWWWV008jgMGH3reH3HMtoEIR8UPrnl4OQO4xNSuwAtcgL6Omf4YPqi0zxMYO1GevUBgmlkgnY0gmlwhAoHAgKJc2VjcDI1NmsxoQOIhz10UYFO65iCNMMmcXHJQmk2FRNrqm0KoNtpBCicpoN1ZHCCIyg,enr:-IS4QATvRDQtMnslfe2DDfQ9au3gvF0oD9yrUswhLMWycafWPLOU9ZjXG0L0m9RJq-7V3lFhKXm9nVslPfizMgvfQZsBgmlkgnY0gmlwhAoHAgOJc2VjcDI1NmsxoQLh78RCFhcrgZ5tKgayyL9TTVXnK8mIlzBZoWiYQqdlUoN1ZHCCIyg \
+    --disable-upnp \
+    --enr-address=$BEACON_NODE_IP \
+    --listen-address=$BEACON_NODE_IP \
+    --enr-tcp-port=9000 \
+    --enr-udp-port=9000 \
+    --enable-private-discovery
+    # --debug-level=debug \
 
   # Run validator node
   # create key
@@ -143,7 +246,7 @@ for (( i=0; i<$NUM_NODES; i++ )); do
   docker run --rm \
     -v $(pwd)/cl/validator-$i:/data \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v7.0.1 \
+    sigp/lighthouse:v3.1.2 \
     lighthouse \
     account_manager \
     validator \
@@ -161,17 +264,12 @@ for (( i=0; i<$NUM_NODES; i++ )); do
     --ip $VALIDATOR_NODE_IP \
     -v $(pwd)/cl/validator-$i:/data \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v7.0.1 \
+    sigp/lighthouse:v3.1.2 \
     lighthouse \
     validator_client \
     --validators-dir=/data/validators \
     --testnet-dir=/config \
     --beacon-nodes=http://$BEACON_NODE_IP:3500 \
-    --http \
-    --http-address=0.0.0.0 \
-    --unencrypted-http-transport \
-    --http-port=5062 \
-    --http-allow-origin=* \
     --suggested-fee-recipient=0x23081455D3FEaf17426176dfc5Ee7A3ce519aD33
 
   # Run siren UI
