@@ -21,13 +21,15 @@ for (( i=0; i<$BOOT_NODES; i++ )); do
     --ip $BOOT_NODE_IP \
     -v $(pwd)/cl/bn$i:/data \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v3.1.2 \
+    sigp/lighthouse:v7.0.1 \
     lighthouse \
     boot_node \
     --datadir=/data \
     --testnet-dir=/config \
+    --disable-packet-filter \
+    --enable-enr-auto-update \
     --listen-address=$BOOT_NODE_IP \
-    $BOOT_NODE_IP
+    --enr-address=$BOOT_NODE_IP
 done
 
 # Start clique node
@@ -137,7 +139,7 @@ for (( i=0; i<$NORMAL_NODES; i++ )); do
     --ip $BEACON_NODE_IP \
     -p 350$i:3500 \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v3.1.2 \
+    sigp/lighthouse:v7.0.1 \
     lighthouse \
     beacon_node \
     --datadir=/data \
@@ -155,6 +157,7 @@ for (( i=0; i<$NORMAL_NODES; i++ )); do
     --listen-address=$BEACON_NODE_IP \
     --enr-tcp-port=9000 \
     --enr-udp-port=9000 \
+    --gui \
     --enable-private-discovery
 done
 
@@ -187,10 +190,11 @@ for (( i=0; i<$VALIDATOR_NODES; i++ )); do
     --network $DOCKER_NETWORK_NAME \
     --ip $EL_NODE_IP \
     -v $(pwd)/el/geth/.ethereum-val-$i:/.ethereum \
+    $( [ "$i" -eq 0 ] && echo "-p 8546:8545" ) \
     ethereum/client-go:v1.11.5 \
     --nat=extip:$EL_NODE_IP \
     --http \
-    --bootnodes=$POS_EL_BOOT_NODE \
+    --bootnodes=$POS_EL_BOOT_NODE,$BOOT_NODE \
     --http.api=eth,net,web3,debug,debug,engine,admin \
     --http.addr=0.0.0.0 \
     --http.corsdomain=* \
@@ -212,7 +216,7 @@ for (( i=0; i<$VALIDATOR_NODES; i++ )); do
     --ip $BEACON_NODE_IP \
     $( [ "$i" -eq 0 ] && echo "-p 3505:3500" ) \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v3.1.2 \
+    sigp/lighthouse:v7.0.1 \
     lighthouse \
     beacon_node \
     --datadir=/data \
@@ -230,6 +234,7 @@ for (( i=0; i<$VALIDATOR_NODES; i++ )); do
     --listen-address=$BEACON_NODE_IP \
     --enr-tcp-port=9000 \
     --enr-udp-port=9000 \
+    --gui \
     --enable-private-discovery
     # --debug-level=debug \
 
@@ -246,7 +251,7 @@ for (( i=0; i<$VALIDATOR_NODES; i++ )); do
   docker run --rm \
     -v $(pwd)/cl/validator-$i:/data \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v3.1.2 \
+    sigp/lighthouse:v7.0.1 \
     lighthouse \
     account_manager \
     validator \
@@ -264,12 +269,17 @@ for (( i=0; i<$VALIDATOR_NODES; i++ )); do
     --ip $VALIDATOR_NODE_IP \
     -v $(pwd)/cl/validator-$i:/data \
     -v $(pwd)/cl/config:/config \
-    sigp/lighthouse:v3.1.2 \
+    sigp/lighthouse:v7.0.1 \
     lighthouse \
     validator_client \
     --validators-dir=/data/validators \
     --testnet-dir=/config \
     --beacon-nodes=http://$BEACON_NODE_IP:3500 \
+    --http \
+    --http-address=0.0.0.0 \
+    --unencrypted-http-transport \
+    --http-port=5062 \
+    --http-allow-origin=* \
     --suggested-fee-recipient=0x23081455D3FEaf17426176dfc5Ee7A3ce519aD33
 
   # Run siren UI
