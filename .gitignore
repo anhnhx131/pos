@@ -1,11 +1,9 @@
 cl/*
 el/*  
-interact-eth1/*
 deposit.sh
 .env
 .env.bootnode
 .env.dora
 .eth/*
-interact-eth1/*
 .explorer/*
 draft/*
